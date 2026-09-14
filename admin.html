@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VORA — Admin Notation (27 Équipes)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ÉCRAN DE LOGIN -->
+<div id="loginScreen" style="
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg); display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+">
+  <div style="
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 40px; max-width: 420px; width: 100%;
+    text-align: center;
+  ">
+    <div style="font-family: var(--font-mono); font-size: 13px; color: var(--teal); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 16px;">
+      🔒 Accès Admin
+    </div>
+    <h2 style="font-family: var(--font-display); font-size: 26px; color: #fff; margin-bottom: 8px;">
+      VORA — Notation
+    </h2>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">
+      Entrez le mot de passe admin pour accéder à la grille d'évaluation.
+    </p>
+    <input type="password" id="pwdInput" placeholder="Mot de passe"
+      style="
+        width: 100%; background: var(--surface-2);
+        border: 1px solid var(--border-light); color: var(--text);
+        font-family: var(--font-mono); font-size: 15px;
+        padding: 12px 14px; border-radius: 8px; outline: none;
+        margin-bottom: 12px; text-align: center;
+      "
+      onkeydown="if(event.key==='Enter') document.getElementById('loginBtn').click()">
+    <div id="loginError" style="color: #F87171; font-size: 13px; font-family: var(--font-mono); min-height: 18px; margin-bottom: 8px;"></div>
+    <button id="loginBtn" class="btn-action btn-primary" style="width: 100%; justify-content: center; padding: 12px;">
+      Se connecter
+    </button>
+  </div>
+</div>
+
+<!-- APPLICATION -->
+<div id="appRoot" style="display: none;">
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-eyebrow">Hackathon VTC · Grille d'Évaluation &amp; Bilan Partenaires</div>
+    <h1>VORA</h1>
+    <p class="hero-sub">
+      <strong>Réinventer la mobilité urbaine au Cameroun.</strong><br>
+      Plateforme d'évaluation jury et tableau de bord analytique pour la présentation des résultats aux partenaires et sponsors.
+    </p>
+    <div class="hero-meta">
+      <span>Édition <b>Hackathon 2026</b></span>
+      <span>Candidats <b>27 Équipes (135+ participants)</b></span>
+      <span>Barème <b>100 Pts</b></span>
+      <span>Persistance <b>Firestore temps réel</b></span>
+    </div>
+
+    <div class="view-switcher">
+      <button class="tab-btn active" id="tabEvaluateBtn" onclick="switchView('evaluate')">
+        <span>📝</span> Fiche d'Évaluation par Équipe
+      </button>
+      <button class="tab-btn" id="tabLeaderboardBtn" onclick="switchView('leaderboard')">
+        <span>📊</span> Tableau Récapitulatif (27 Équipes)
+      </button>
+      <button class="tab-btn" id="tabAnalyticsBtn" onclick="switchView('analytics')">
+        <span>📈</span> Bilan &amp; Analytics Partenaires
+      </button>
+      <button class="tab-btn" id="tabCriteriaBtn" onclick="switchView('criteria')">
+        <span>📜</span> Barème Officiel
+      </button>
+    </div>
+  </header>
+
+  <!-- BANDEAU DE STATUT IMPORT -->
+  <div id="importStatusBanner" style="display:none;">
+    <span id="importStatusText">Aucun fichier importé — cliquez sur « 📂 Importer JSON »</span>
+    <button onclick="document.getElementById('importStatusBanner').style.display='none'" title="Fermer">✕</button>
+  </div>
+
+  <!-- TEAM SELECTOR BAR -->
+  <section class="team-bar" id="teamBar">
+    <div class="team-select-group">
+      <label for="teamSelect">Sélectionner l'équipe à évaluer</label>
+      <select id="teamSelect" class="team-select" onchange="onTeamSelected(this.value)">
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button class="team-nav-btn" onclick="prevTeam()" title="Équipe précédente">◀ Précédent</button>
+      <button class="team-nav-btn" onclick="nextTeam()" title="Équipe suivante">Suivant ▶</button>
+    </div>
+
+    <div class="team-actions">
+      <button class="btn-action" onclick="exportDataJSON()" title="Exporter toutes les notes en JSON">💾 Exporter JSON</button>
+      <button class="btn-action" onclick="document.getElementById('importFile').click()" title="Importer un fichier JSON partagé">📂 Importer JSON</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importDataJSON(event)">
+      <button class="btn-action" onclick="exportCSV()" title="Exporter en format CSV Excel">📑 Export CSV</button>
+      <button class="btn-action" onclick="window.print()" title="Imprimer la fiche en cours">🖨️ Imprimer</button>
+      <button class="btn-action" onclick="handleLogout()" title="Se déconnecter">🚪 Déconnexion</button>
+    </div>
+  </section>
+
+  <!-- SECTION 1: EVALUATION VIEW -->
+  <main id="evaluateView">
+
+    <div class="score-header-card">
+      <div class="score-header-info">
+        <span class="stop-label" id="currentTeamBadge">Équipe 01 / 27</span>
+        <h2 id="currentTeamTitle">Equipe 1-Dragon</h2>
+        <div class="members-tag" id="currentTeamMembers">👥 <strong>Membres :</strong> -</div>
+        <p class="status-txt" id="currentTeamStatus">Statut : Non évaluée</p>
+      </div>
+
+      <div class="meter-display">
+        <div>
+          <div class="digits" id="totalScoreDisplay">00 <small>/ 100</small></div>
+        </div>
+        <div class="grade-badge badge-improve" id="gradeBadgeDisplay">
+          <span>À améliorer</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scale-legend">
+      <div class="scale-item">
+        <span class="scale-range-txt">90 – 100 pts</span>
+        <span class="scale-name">Excellent 🏆</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-range-txt">80 – 89 pts</span>
+        <span class="scale-name">Très bon ⭐</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-range-txt">70 – 79 pts</span>
+        <span class="scale-name">Bon 👍</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-range-txt">60 – 69 pts</span>
+        <span class="scale-name">Assez bon ✔️</span>
+      </div>
+      <div class="scale-item">
+        <span class="scale-range-txt">&lt; 60 pts</span>
+        <span class="scale-name">À améliorer ⚠️</span>
+      </div>
+    </div>
+
+    <p class="route-intro" style="margin-top: 36px;">
+      <span>Critères d'évaluation pas à pas</span>
+      <span style="color: var(--teal);" id="evaluationProgressTxt">Progression : 0 / 8 critères notés</span>
+    </p>
+
+    <!-- CRITERE 1 -->
+    <div class="stop is-signal">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 01 · 20 Points</span>
+            <h2>Innovation &amp; Valeur Ajoutée</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Originalité de la solution, différenciation stratégique et réelle valeur ajoutée par rapport aux solutions existantes sur le marché (Yango, EasyRide, Heetch, etc.).
+        </p>
+        <ul>
+          <li>Approche novatrice pour fluidifier le transport urbain.</li>
+          <li>Idées ingénieuses répondant aux frictions locales (embouteillages, adressage, tarification dynamique).</li>
+        </ul>
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 20 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="20" step="0.5" class="score-range" id="range_innovation" oninput="syncScore('innovation', this.value)">
+            <input type="number" min="0" max="20" step="0.5" class="score-number-input" id="score_innovation" onchange="syncScore('innovation', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRITERE 2 -->
+    <div class="stop">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 02 · 15 Points</span>
+            <h2>Pertinence de la Solution</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Réponse au problème de mobilité urbaine et adéquation précise avec les besoins réels des utilisateurs (passagers et chauffeurs).
+        </p>
+        <ul>
+          <li>Compréhension fine des difficultés de déplacement urbain au quotidien.</li>
+          <li>Équilibre d'intérêt entre le confort du passager et la rentabilité du chauffeur.</li>
+        </ul>
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 15 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="15" step="0.5" class="score-range" id="range_pertinence" oninput="syncScore('pertinence', this.value)">
+            <input type="number" min="0" max="15" step="0.5" class="score-number-input" id="score_pertinence" onchange="syncScore('pertinence', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRITERE 3 -->
+    <div class="stop is-signal">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 03 · 15 Points</span>
+            <h2>Fonctionnalités &amp; Parcours Utilisateur</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Richesse des fonctionnalités, respect du cahier des charges VORA et fluidité du parcours utilisateur (Passager / Chauffeur / Admin).
+        </p>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-num">01 · ESSENTIEL</div>
+            <div class="feature-name">Réservation Rapide</div>
+            <div class="feature-sub">Commande immédiate en quelques clics, sélection départ / destination.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-num">02 · TEMPS RÉEL</div>
+            <div class="feature-name">Géolocalisation Live</div>
+            <div class="feature-sub">Suivi du chauffeur sur carte interactive en direct.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-num">03 · ENGAGEMENT</div>
+            <div class="feature-name">Notification Intelligente</div>
+            <div class="feature-sub">Alertes d'arrivée, statut de course, notifications push.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-num">04 · PAIEMENT</div>
+            <div class="feature-name">Paiement Transparent</div>
+            <div class="feature-sub">Intégration Mobile Money (OM / MoMo), carte, cash.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-num">INTELLIGENCE</div>
+            <div class="feature-name">Smart Dispatch</div>
+            <div class="feature-sub">Le bon chauffeur, au bon moment, attribution optimale.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-num">SÉCURITÉ</div>
+            <div class="feature-name">Trajet Partagé &amp; SOS</div>
+            <div class="feature-sub">Partage de position avec proches, bouton d'urgence.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-num">ACCESSIBLE</div>
+            <div class="feature-name">Mode Hors-ligne</div>
+            <div class="feature-sub">Résilience en cas de coupure réseau ou faible connexion.</div>
+          </div>
+        </div>
+
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 15 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="15" step="0.5" class="score-range" id="range_fonctionnalites" oninput="syncScore('fonctionnalites', this.value)">
+            <input type="number" min="0" max="15" step="0.5" class="score-number-input" id="score_fonctionnalites" onchange="syncScore('fonctionnalites', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRITERE 4 -->
+    <div class="stop">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 04 · 15 Points</span>
+            <h2>Qualité Technique &amp; Architecture</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Architecture, qualité du code, intégration des API (Cartes, Base spatiale PostGIS, Cache Redis), stabilité globale.
+        </p>
+        <ul>
+          <li>Architecture logicielle claire et modulaire.</li>
+          <li>Gestion propre des erreurs, sécurisation des endpoints et des accès.</li>
+          <li>Stabilité, rapidité et scalabilité de l'ensemble de la stack.</li>
+        </ul>
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 15 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="15" step="0.5" class="score-range" id="range_technique" oninput="syncScore('technique', this.value)">
+            <input type="number" min="0" max="15" step="0.5" class="score-number-input" id="score_technique" onchange="syncScore('technique', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRITERE 5 -->
+    <div class="stop">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 05 · 10 Points</span>
+            <h2>Design &amp; Expérience Utilisateur (UI/UX)</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Interface, ergonomie, accessibilité, cohérence graphique et fluidité des interactions.
+        </p>
+        <ul>
+          <li>Design moderne, intuitif et adapté aux standards mobiles.</li>
+          <li>Lisibilité des informations, simplicité d'utilisation et clarté des contrastes.</li>
+        </ul>
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 10 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="10" step="0.5" class="score-range" id="range_uiux" oninput="syncScore('uiux', this.value)">
+            <input type="number" min="0" max="10" step="0.5" class="score-number-input" id="score_uiux" onchange="syncScore('uiux', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRITERE 6 -->
+    <div class="stop">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 06 · 10 Points</span>
+            <h2>Présentation Vidéo &amp; Démonstration</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Clarté de la démonstration, qualité des explications, dynamisme et capacité à présenter le projet de manière convaincante.
+        </p>
+        <ul>
+          <li>Démonstration concrète du fonctionnement de l'application VORA.</li>
+          <li>Capacité de synthèse et argumentation percutante de l'équipe.</li>
+        </ul>
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 10 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="10" step="0.5" class="score-range" id="range_video" oninput="syncScore('video', this.value)">
+            <input type="number" min="0" max="10" step="0.5" class="score-number-input" id="score_video" onchange="syncScore('video', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRITERE 7 -->
+    <div class="stop">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 07 · 10 Points</span>
+            <h2>Impact &amp; Faisabilité de Déploiement</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Potentiel d'adoption, viabilité du projet, possibilité concrète de déploiement sur le terrain au Cameroun.
+        </p>
+        <ul>
+          <li>Prise en compte des réalités locales de mobilité et d'usage.</li>
+          <li>Modèle économique et plan de passage à l'échelle réaliste.</li>
+        </ul>
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 10 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="10" step="0.5" class="score-range" id="range_impact" oninput="syncScore('impact', this.value)">
+            <input type="number" min="0" max="10" step="0.5" class="score-number-input" id="score_impact" onchange="syncScore('impact', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRITERE 8 -->
+    <div class="stop">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Critère 08 · 5 Points</span>
+            <h2>Qualité du Dépôt GitHub &amp; Documentation</h2>
+          </div>
+        </div>
+        <p class="desc">
+          Organisation du projet, documentation (README), structure du dépôt, facilité d'installation.
+        </p>
+        <ul>
+          <li>README clair avec guide de démarrage et prérequis bien détaillés.</li>
+          <li>Arborescence organisée et présence des fichiers de configuration nécessaires.</li>
+        </ul>
+        <div class="score-input-box">
+          <div class="score-label-col">
+            <span class="score-title">Note attribuée :</span>
+            <span class="score-max">(Max 5 pts)</span>
+          </div>
+          <div class="score-controls">
+            <input type="range" min="0" max="5" step="0.5" class="score-range" id="range_github" oninput="syncScore('github', this.value)">
+            <input type="number" min="0" max="5" step="0.5" class="score-number-input" id="score_github" onchange="syncScore('github', this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYNTHESE -->
+    <div class="stop is-destination">
+      <div class="marker-col"><div class="marker"></div></div>
+      <div class="stop-content">
+        <div class="stop-header">
+          <div>
+            <span class="stop-label">Synthèse Finale</span>
+            <h2>Commentaires &amp; Appréciation du Jury</h2>
+          </div>
+        </div>
+
+        <div class="notes-box">
+          <label for="team_notes">Observations générales, points forts et axes d'amélioration</label>
+          <textarea id="team_notes" placeholder="Indiquez ici vos commentaires détaillés pour cette équipe..." oninput="saveCurrentTeamData()"></textarea>
+        </div>
+
+        <div class="brief" style="margin-top: 24px;">
+          <h3>Récapitulatif de la notation</h3>
+          <p>
+            Note finale : <strong id="summaryScoreTxt" style="color: var(--amber);">0 / 100</strong> —
+            Mention : <strong id="summaryGradeTxt" style="color: var(--teal);">À améliorer</strong>
+          </p>
+        </div>
+
+        <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
+          <button class="btn-action" onclick="resetCurrentTeamScore()">🔄 Réinitialiser cette équipe</button>
+          <button class="btn-action btn-primary" onclick="nextTeam()">Équipe Suivante ➔</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- SECTION 2: LEADERBOARD -->
+  <section id="leaderboardView" style="display: none; padding: 20px 0 60px;">
+    <div class="route-intro">
+      <span>Vue globale &amp; Classement des 27 équipes</span>
+      <button class="btn-action btn-primary" onclick="exportCSV()">📊 Télécharger le classement CSV</button>
+    </div>
+
+    <div class="table-container">
+      <table class="recap-table" id="recapTable">
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Équipe</th>
+            <th>Membres</th>
+            <th>Innov. (/20)</th>
+            <th>Pertin. (/15)</th>
+            <th>Fonct. (/15)</th>
+            <th>Techn. (/15)</th>
+            <th>UI/UX (/10)</th>
+            <th>Vidéo (/10)</th>
+            <th>Impact (/10)</th>
+            <th>Git (/5)</th>
+            <th>Total (/100)</th>
+            <th>Mention</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="recapTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION 3: ANALYTICS -->
+  <section id="analyticsView" style="display: none; padding: 20px 0 60px;">
+    <div class="brief" style="border-left-color: var(--amber);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <span class="stop-label" style="color: var(--teal);">Nuxcine Hackathon 2026 · Rapport Exécutif</span>
+          <h2 style="font-family: var(--font-display); font-size: 24px; color: #FFFFFF; margin-top: 4px;">Bilan Global &amp; Performance des Candidats</h2>
+        </div>
+        <button class="btn-action btn-primary" onclick="window.print()">📑 Imprimer la Synthèse Partenaires</button>
+      </div>
+      <p style="margin-top: 14px; font-size: 15px; color: #C7CCD8; line-height: 1.65;">
+        En <strong>2026</strong>, Nuxcine a réuni <strong>27 équipes</strong> (soit plus de <strong>135 développeurs, ingénieurs et concepteurs UI/UX</strong>) autour du grand défi <strong>VORA : Réinventer la mobilité urbaine au Cameroun</strong>. Évalués rigoureusement selon 8 critères techniques et de faisabilité locale, voici la vue d'ensemble et les indicateurs clés destinés à nos partenaires.
+      </p>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-title">Moyenne Générale</span>
+        <div class="kpi-value" id="kpiAvgScore">00.0 <small>/ 100</small></div>
+        <span class="kpi-sub" id="kpiAvgGrade">Mention : En attente</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Major de Promotion (Top 1)</span>
+        <div class="kpi-value" id="kpiTopScore">00 <small>/ 100</small></div>
+        <span class="kpi-sub" id="kpiTopTeamName" style="color: var(--teal); font-weight: 500;">-</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Projets Qualifiés (≥ 70 pts)</span>
+        <div class="kpi-value" id="kpiPassRate">0 <small>%</small></div>
+        <span class="kpi-sub" id="kpiPassCount">0 équipe(s) au niveau</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Équipes Évaluées</span>
+        <div class="kpi-value" id="kpiEvalCount">0 <small>/ 27</small></div>
+        <span class="kpi-sub" id="kpiEvalPercent">0% complété</span>
+      </div>
+    </div>
+
+    <div class="route-intro" style="margin-bottom: 20px;">
+      <span>🏆 Podium des Lauréats du Hackathon VORA</span>
+    </div>
+
+    <div class="podium-grid">
+      <div class="podium-card podium-silver" id="podiumRank2Card">
+        <span class="podium-medal">🥈</span>
+        <span class="podium-rank-tag">2ème Place · Argent</span>
+        <div class="podium-team-title" id="podiumRank2Name">En attente</div>
+        <div class="podium-members" id="podiumRank2Members">-</div>
+        <div class="podium-score" id="podiumRank2Score">-- / 100</div>
+      </div>
+      <div class="podium-card podium-gold" id="podiumRank1Card">
+        <span class="podium-medal">🥇</span>
+        <span class="podium-rank-tag" style="color: var(--amber);">1ère Place · Champion</span>
+        <div class="podium-team-title" id="podiumRank1Name">En attente</div>
+        <div class="podium-members" id="podiumRank1Members">-</div>
+        <div class="podium-score" style="color: var(--amber);" id="podiumRank1Score">-- / 100</div>
+      </div>
+      <div class="podium-card podium-bronze" id="podiumRank3Card">
+        <span class="podium-medal">🥉</span>
+        <span class="podium-rank-tag">3ème Place · Bronze</span>
+        <div class="podium-team-title" id="podiumRank3Name">En attente</div>
+        <div class="podium-members" id="podiumRank3Members">-</div>
+        <div class="podium-score" id="podiumRank3Score">-- / 100</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>📈 Courbe de Distribution des Notes (27 Équipes)</h3>
+          <p>Visualisation comparative des scores ordonnés du 1er au 27e avec la ligne de moyenne globale.</p>
+        </div>
+        <div class="chart-wrapper" style="height: 320px;">
+          <canvas id="chartCurveScores"></canvas>
+        </div>
+      </div>
+
+      <div class="charts-row-dual">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>🍩 Répartition des Mentions Jury</h3>
+            <p>Répartition des équipes selon l'échelle officielle de notation.</p>
+          </div>
+          <div class="chart-wrapper" style="height: 280px;">
+            <canvas id="chartDonutMentions"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>🕸️ Radar des Compétences Globales</h3>
+            <p>Moyenne de la promotion sur chacun des 8 critères techniques.</p>
+          </div>
+          <div class="chart-wrapper" style="height: 280px;">
+            <canvas id="chartRadarSkills"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: BAREME -->
+  <section id="criteriaView" style="display: none; padding: 20px 0 60px;">
+    <div class="brief">
+      <h3>Barème Officiel du Hackathon VORA</h3>
+      <p>Ce barème standardisé est utilisé pour évaluer les 27 équipes sur une base stricte de 100 points.</p>
+    </div>
+
+    <div class="table-container" style="margin-top: 24px;">
+      <table class="recap-table">
+        <thead>
+          <tr>
+            <th>Critère</th>
+            <th>Description détaillée</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Innovation</td>
+            <td>Originalité de la solution et valeur ajoutée par rapport aux solutions existantes.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">20 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Pertinence de la solution</td>
+            <td>Réponse au problème de mobilité, adéquation avec les besoins des utilisateurs.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Fonctionnalités</td>
+            <td>Richesse des fonctionnalités, respect du cahier des charges, fluidité du parcours utilisateur.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Qualité technique</td>
+            <td>Architecture, qualité du code, intégration des API, stabilité de l'application.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Design &amp; Expérience utilisateur (UI/UX)</td>
+            <td>Interface, ergonomie, accessibilité, cohérence graphique.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Présentation vidéo</td>
+            <td>Clarté de la démonstration, qualité des explications, capacité à présenter le projet.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Impact &amp; Faisabilité</td>
+            <td>Potentiel d'adoption, viabilité du projet, possibilité de déploiement au Cameroun.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Qualité du dépôt GitHub</td>
+            <td>Organisation du projet, documentation (README), structure du dépôt, facilité d'installation.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">5 pts</td>
+          </tr>
+          <tr style="background: var(--surface-2);">
+            <td style="color: #FFFFFF; font-weight: bold;">TOTAL OFFICIEL</td>
+            <td style="color: #FFFFFF;">Base stricte de notation sur 100 points</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--amber); font-size: 16px;">100 pts</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>VORA — Réinventer la mobilité urbaine · Nuxcine Hackathon 2026</span>
+    <span>Grille d'évaluation officielle · 27 Équipes · Barème sur 100 pts</span>
+  </footer>
+
+</div>
+
+</div> <!-- fin #appRoot -->
+
+<div class="toast" id="toast">Données enregistrées avec succès !</div>
+
+<script type="module" src="js/admin.js"></script>
+
+</body>
+</html>

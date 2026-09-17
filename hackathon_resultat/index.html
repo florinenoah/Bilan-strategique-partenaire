@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VORA — Résultats du Hackathon (27 Équipes)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- HEADER / HERO -->
+  <header class="hero">
+    <div class="hero-eyebrow">Hackathon VTC · Résultats Officiels</div>
+    <h1>VORA</h1>
+    <p class="hero-sub">
+      <strong>Réinventer la mobilité urbaine au Cameroun.</strong><br>
+      Résultats officiels du jury et tableau de bord analytique pour les participants, partenaires et sponsors.
+    </p>
+    <div class="hero-meta">
+      <span>Édition <b>Hackathon 2026</b></span>
+      <span>Candidats <b>27 Équipes &amp; Participants Solo</b></span>
+      <span>Barème <b>100 Pts</b></span>
+      <span>Lecture <b>Temps réel</b></span>
+    </div>
+
+    <!-- Mode Switcher -->
+    <div class="view-switcher">
+      <button class="tab-btn active" id="tabLeaderboardBtn" onclick="switchView('leaderboard')">
+        <span>📊</span> Tableau Récapitulatif (27 Équipes)
+      </button>
+      <button class="tab-btn" id="tabSoloBtn" onclick="switchView('solo')">
+        <span>👤</span> Participants Solo
+      </button>
+      <button class="tab-btn" id="tabAnalyticsBtn" onclick="switchView('analytics')">
+        <span>📈</span> Bilan &amp; Analytics Partenaires
+      </button>
+      <button class="tab-btn" id="tabCriteriaBtn" onclick="switchView('criteria')">
+        <span>📜</span> Barème Officiel
+      </button>
+    </div>
+  </header>
+
+  <!-- SECTION 1: LEADERBOARD -->
+  <section id="leaderboardView" style="padding: 30px 0 60px;">
+    <div class="route-intro">
+      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <span>Vue globale &amp; Classement des 27 équipes</span>
+        <div class="category-toggle">
+          <button class="category-btn active" onclick="switchView('leaderboard')">👥 Équipes (27)</button>
+          <button class="category-btn" onclick="switchView('solo')">👤 Participants Solo</button>
+        </div>
+      </div>
+      <button class="btn-action btn-primary" onclick="exportCSV()">📊 Télécharger le classement CSV</button>
+    </div>
+
+    <div class="table-container">
+      <table class="recap-table" id="recapTable">
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Équipe</th>
+            <th>Membres</th>
+            <th>Innov. (/20)</th>
+            <th>Pertin. (/15)</th>
+            <th>Fonct. (/15)</th>
+            <th>Techn. (/15)</th>
+            <th>UI/UX (/10)</th>
+            <th>Vidéo (/10)</th>
+            <th>Impact (/10)</th>
+            <th>Git (/5)</th>
+            <th>Total (/100)</th>
+            <th>Mention</th>
+          </tr>
+        </thead>
+        <tbody id="recapTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION SOLO: LEADERBOARD PARTICIPANTS SOLO -->
+  <section id="soloView" style="display: none; padding: 30px 0 60px;">
+    <div class="brief" style="border-left-color: var(--teal); margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <span class="stop-label" style="color: var(--amber);">Hackathon VORA 2026 · Compétition Solo</span>
+          <h2 style="font-family: var(--font-display); font-size: 24px; color: #FFFFFF; margin-top: 4px;">Classement Officiel · Participants Solo</h2>
+          <p style="margin-top: 8px; font-size: 14.5px; color: #C7CCD8; line-height: 1.6;">
+            Candidats ayant choisi de concourir individuellement. Ils sont évalués avec <strong>les mêmes critères d'excellence et le même barème strict de 100 points</strong> que les équipes.
+          </p>
+        </div>
+        <button class="btn-action btn-primary" onclick="exportSoloCSV()">📊 Télécharger le classement Solo (CSV)</button>
+      </div>
+    </div>
+
+    <div class="route-intro">
+      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <span>Classement des participants solo</span>
+        <div class="category-toggle">
+          <button class="category-btn" onclick="switchView('leaderboard')">👥 Équipes (27)</button>
+          <button class="category-btn active" onclick="switchView('solo')">👤 Participants Solo</button>
+        </div>
+      </div>
+      <button class="btn-action" onclick="exportSoloCSV()">📑 Export CSV Solo</button>
+    </div>
+
+    <div class="table-container">
+      <table class="recap-table" id="soloTable">
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Candidat Solo</th>
+            <th>Projet / Démo</th>
+            <th>Innov. (/20)</th>
+            <th>Pertin. (/15)</th>
+            <th>Fonct. (/15)</th>
+            <th>Techn. (/15)</th>
+            <th>UI/UX (/10)</th>
+            <th>Vidéo (/10)</th>
+            <th>Impact (/10)</th>
+            <th>Git (/5)</th>
+            <th>Total (/100)</th>
+            <th>Mention</th>
+          </tr>
+        </thead>
+        <tbody id="soloTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION 2: ANALYTICS -->
+  <section id="analyticsView" style="display: none; padding: 20px 0 60px;">
+
+    <div class="brief" style="border-left-color: var(--amber);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <span class="stop-label" style="color: var(--teal);">Nuxcine Hackathon 2026 · Rapport Exécutif</span>
+          <h2 style="font-family: var(--font-display); font-size: 24px; color: #FFFFFF; margin-top: 4px;">Bilan Global &amp; Performance des Candidats</h2>
+        </div>
+        <button class="btn-action btn-primary" onclick="window.print()">📑 Imprimer la Synthèse Partenaires</button>
+      </div>
+      <p style="margin-top: 14px; font-size: 15px; color: #C7CCD8; line-height: 1.65;">
+        En <strong>2026</strong>, Nuxcine a réuni <strong>27 équipes</strong> (soit plus de <strong>135 développeurs, ingénieurs et concepteurs UI/UX</strong>) autour du grand défi <strong>VORA : Réinventer la mobilité urbaine au Cameroun</strong>. Évalués rigoureusement selon 8 critères techniques et de faisabilité locale, voici la vue d'ensemble et les indicateurs clés destinés à nos partenaires.
+      </p>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-title">Moyenne Générale</span>
+        <div class="kpi-value" id="kpiAvgScore">00.0 <small>/ 100</small></div>
+        <span class="kpi-sub" id="kpiAvgGrade">Mention : En attente</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Major de Promotion (Top 1)</span>
+        <div class="kpi-value" id="kpiTopScore">00 <small>/ 100</small></div>
+        <span class="kpi-sub" id="kpiTopTeamName" style="color: var(--teal); font-weight: 500;">-</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Projets Qualifiés (≥ 70 pts)</span>
+        <div class="kpi-value" id="kpiPassRate">0 <small>%</small></div>
+        <span class="kpi-sub" id="kpiPassCount">0 équipe(s) au niveau</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Équipes Évaluées</span>
+        <div class="kpi-value" id="kpiEvalCount">0 <small>/ 27</small></div>
+        <span class="kpi-sub" id="kpiEvalPercent">0% complété</span>
+      </div>
+    </div>
+
+    <div class="route-intro" style="margin-bottom: 20px;">
+      <span>🏆 Podium des Lauréats du Hackathon VORA</span>
+    </div>
+
+    <div class="podium-grid">
+      <div class="podium-card podium-silver" id="podiumRank2Card">
+        <span class="podium-medal">🥈</span>
+        <span class="podium-rank-tag">2ème Place · Argent</span>
+        <div class="podium-team-title" id="podiumRank2Name">En attente</div>
+        <div class="podium-members" id="podiumRank2Members">-</div>
+        <div class="podium-score" id="podiumRank2Score">-- / 100</div>
+      </div>
+      <div class="podium-card podium-gold" id="podiumRank1Card">
+        <span class="podium-medal">🥇</span>
+        <span class="podium-rank-tag" style="color: var(--amber);">1ère Place · Champion</span>
+        <div class="podium-team-title" id="podiumRank1Name">En attente</div>
+        <div class="podium-members" id="podiumRank1Members">-</div>
+        <div class="podium-score" style="color: var(--amber);" id="podiumRank1Score">-- / 100</div>
+      </div>
+      <div class="podium-card podium-bronze" id="podiumRank3Card">
+        <span class="podium-medal">🥉</span>
+        <span class="podium-rank-tag">3ème Place · Bronze</span>
+        <div class="podium-team-title" id="podiumRank3Name">En attente</div>
+        <div class="podium-members" id="podiumRank3Members">-</div>
+        <div class="podium-score" id="podiumRank3Score">-- / 100</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3>📈 Courbe de Distribution des Notes (27 Équipes)</h3>
+          <p>Visualisation comparative des scores ordonnés du 1er au 27e avec la ligne de moyenne globale.</p>
+        </div>
+        <div class="chart-wrapper" style="height: 320px;">
+          <canvas id="chartCurveScores"></canvas>
+        </div>
+      </div>
+
+      <div class="charts-row-dual">
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>🍩 Répartition des Mentions Jury</h3>
+            <p>Répartition des équipes selon l'échelle officielle de notation.</p>
+          </div>
+          <div class="chart-wrapper" style="height: 280px;">
+            <canvas id="chartDonutMentions"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3>🕸️ Radar des Compétences Globales</h3>
+            <p>Moyenne de la promotion sur chacun des 8 critères techniques.</p>
+          </div>
+          <div class="chart-wrapper" style="height: 280px;">
+            <canvas id="chartRadarSkills"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3: BAREME -->
+  <section id="criteriaView" style="display: none; padding: 20px 0 60px;">
+    <div class="brief">
+      <h3>Barème Officiel du Hackathon VORA</h3>
+      <p>Ce barème standardisé est utilisé pour évaluer les 27 équipes sur une base stricte de 100 points.</p>
+    </div>
+
+    <div class="table-container" style="margin-top: 24px;">
+      <table class="recap-table">
+        <thead>
+          <tr>
+            <th>Critère</th>
+            <th>Description détaillée</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Innovation</td>
+            <td>Originalité de la solution et valeur ajoutée par rapport aux solutions existantes.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">20 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Pertinence de la solution</td>
+            <td>Réponse au problème de mobilité, adéquation avec les besoins des utilisateurs.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Fonctionnalités</td>
+            <td>Richesse des fonctionnalités, respect du cahier des charges, fluidité du parcours utilisateur.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Qualité technique</td>
+            <td>Architecture, qualité du code, intégration des API, stabilité de l'application.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Design &amp; Expérience utilisateur (UI/UX)</td>
+            <td>Interface, ergonomie, accessibilité, cohérence graphique.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Présentation vidéo</td>
+            <td>Clarté de la démonstration, qualité des explications, capacité à présenter le projet.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Impact &amp; Faisabilité</td>
+            <td>Potentiel d'adoption, viabilité du projet, possibilité de déploiement au Cameroun.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
+          </tr>
+          <tr>
+            <td style="color: var(--amber); font-weight: 600;">Qualité du dépôt GitHub</td>
+            <td>Organisation du projet, documentation (README), structure du dépôt, facilité d'installation.</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">5 pts</td>
+          </tr>
+          <tr style="background: var(--surface-2);">
+            <td style="color: #FFFFFF; font-weight: bold;">TOTAL OFFICIEL</td>
+            <td style="color: #FFFFFF;">Base stricte de notation sur 100 points</td>
+            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--amber); font-size: 16px;">100 pts</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span>VORA — Réinventer la mobilité urbaine · Nuxcine Hackathon 2026</span>
+    <span>Résultats officiels · 27 Équipes · Barème sur 100 pts</span>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast">Données actualisées</div>
+
+<script type="module" src="js/public.js"></script>
+
+</body>
+</html>

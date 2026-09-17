@@ -3,314 +3,793 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VORA — Résultats du Hackathon (27 Équipes)</title>
+<title>Bilan Stratégique — Hackathon NuxCine 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0B0D12;
+  --surface: #12151C;
+  --surface-2: #171C26;
+  --surface-3: #1E2433;
+  --border: #232838;
+  --border-light: #2E364B;
+  --amber: #FFB648;
+  --amber-soft: rgba(255, 182, 72, 0.12);
+  --teal: #43D9C0;
+  --teal-soft: rgba(67, 217, 192, 0.12);
+  --blue: #4A90E2;
+  --text: #EDEEF1;
+  --text-muted: #8A93A6;
+  --line: rgba(67, 217, 192, 0.35);
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--teal); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(67,217,192,0.07), transparent 40%),
+    radial-gradient(circle at 85% 0%, rgba(255,182,72,0.06), transparent 35%),
+    radial-gradient(circle at 50% 90%, rgba(74,144,226,0.04), transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* ---------- NAV ---------- */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(11,13,18,0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.topnav-inner {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.brand {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--teal);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand::before {
+  content: '';
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 4px rgba(255,182,72,0.15);
+}
+.navlinks { display: flex; gap: 6px; flex-wrap: wrap; }
+.navlinks a {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.navlinks a:hover { color: var(--text); text-decoration: none; border-color: var(--border-light); }
+
+/* ---------- HERO ---------- */
+.hero { padding: 70px 0 45px; border-bottom: 1px solid var(--border); }
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--teal);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 4px rgba(255,182,72,0.15);
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(38px, 7vw, 68px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  background: linear-gradient(180deg, #FFFFFF 0%, #B9C3D4 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hero-sub { margin-top: 18px; max-width: 720px; font-size: 17px; color: var(--text-muted); }
+.hero-sub strong { color: var(--text); font-weight: 500; }
+.hero-meta {
+  margin-top: 30px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.hero-meta span b { color: var(--text); font-weight: 500; }
+.year-pill {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--bg);
+  background: var(--amber);
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+/* ---------- SECTION HEADERS ---------- */
+.section { padding: 56px 0; border-bottom: 1px solid var(--border); scroll-margin-top: 80px; }
+.section:last-of-type { border-bottom: none; }
+.section-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0B0D12;
+  background: var(--amber);
+  padding: 4px 12px;
+  border-radius: 3px;
+  margin-bottom: 16px;
+}
+.section h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(26px, 4vw, 36px);
+  color: #FFFFFF;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+.section-lede { color: var(--text-muted); font-size: 15.5px; max-width: 760px; margin-bottom: 30px; }
+.section-lede strong { color: var(--text); font-weight: 500; }
+
+/* ---------- KPI GRID ---------- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 8px 0 10px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--amber));
+}
+.kpi-title { font-family: var(--font-mono); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.kpi-value { font-family: var(--font-mono); font-size: 34px; font-weight: 700; color: var(--amber); line-height: 1; }
+.kpi-value small { font-size: 15px; color: var(--text-muted); font-weight: 400; }
+.kpi-sub { font-size: 12.5px; color: var(--text-muted); }
+
+/* ---------- BRIEF CALLOUT ---------- */
+.brief {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--teal);
+  border-radius: 4px;
+  padding: 22px 24px;
+  margin-top: 24px;
+}
+.brief p { color: #C7CCD8; font-size: 15px; }
+.brief p + p { margin-top: 12px; }
+
+/* ---------- INSIGHT CARDS ---------- */
+.insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.insight-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  border-radius: 8px;
+  padding: 20px 22px;
+}
+.insight-card h3 {
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  color: #FFFFFF;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.insight-card p { font-size: 14px; color: var(--text-muted); }
+
+/* ---------- CHART CARD ---------- */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 26px;
+  margin-top: 30px;
+}
+.chart-header { margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+.chart-header h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: #FFFFFF; margin-bottom: 4px; }
+.chart-header p { font-size: 13.5px; color: var(--text-muted); }
+.chart-wrapper { position: relative; width: 100%; height: 300px; }
+
+/* ---------- VALUE GRID (partenaires) ---------- */
+.value-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.value-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.value-card .vh {
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.value-card .vb { padding: 14px 16px; font-size: 13.5px; color: var(--text-muted); }
+
+/* ---------- PARTNERSHIP TYPES ---------- */
+.partner-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.partner-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+.partner-card .pt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 10px;
+  display: inline-block;
+  border-bottom: 1px solid var(--teal);
+  padding-bottom: 4px;
+}
+.partner-card p { font-size: 13.5px; color: var(--text-muted); }
+
+/* ---------- LISTS ---------- */
+.check-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.check-list li {
+  position: relative;
+  padding-left: 26px;
+  font-size: 14.5px;
+  color: #C7CCD8;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px 12px 40px;
+}
+.check-list li::before {
+  content: '›';
+  position: absolute; left: 16px; top: 10px;
+  color: var(--teal);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 16px;
+}
+.two-col-list { columns: 2; column-gap: 20px; }
+.two-col-list li { break-inside: avoid; margin-bottom: 12px; }
+@media (max-width: 700px) { .two-col-list { columns: 1; } }
+
+/* ---------- SPONSORS ---------- */
+.sponsor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.sponsor-tile {
+  background: var(--surface);
+  border: 1px dashed var(--border-light);
+  border-radius: 12px;
+  padding: 14px 12px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+  gap: 10px;
+}
+.sponsor-tile span {
+  display:block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  min-height: 2.8em;
+}
+.sponsor-logo {
+  width: 100%;
+  max-width: 260px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+}
+.sponsor-logo svg,
+.sponsor-logo img {
+  width: 100%;
+  height: 190%;
+  display: block;
+  object-fit: contain;
+  filter: none;
+}
+.sponsor-yoca .sponsor-logo,
+.sponsor-iugee .sponsor-logo,
+.sponsor-gold .sponsor-logo,
+.sponsor-liv .sponsor-logo,
+.sponsor-mama .sponsor-logo {
+  max-width: 260px;
+  height: 110px;
+}
+
+.spotlight {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.spotlight-text { background: var(--surface); padding: 30px; }
+.spotlight-text h3 { font-family: var(--font-display); font-size: 22px; color: #FFFFFF; margin-bottom: 14px; }
+.spotlight-text p { font-size: 14px; color: var(--text-muted); }
+.spotlight-text p + p { margin-top: 12px; }
+.spotlight-stat {
+  background: linear-gradient(160deg, #3A0A12 0%, #0B0D12 75%);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.spotlight-stat .sub { font-family: var(--font-mono); font-size: 12.5px; color: #F2B9C0; text-transform: uppercase; letter-spacing: 0.08em; }
+.spotlight-stat .big { font-family: var(--font-display); font-size: 42px; font-weight: 700; color: #FFFFFF; margin: 6px 0 4px; }
+.spotlight-stat .cap { font-size: 13px; color: #E8B9C0; }
+@media (max-width: 700px) { .spotlight { grid-template-columns: 1fr; } }
+
+/* ---------- SYNTHESE FINALE ---------- */
+.finale {
+  background: linear-gradient(180deg, rgba(67,217,192,0.08) 0%, var(--surface) 60%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 34px;
+  text-align: left;
+}
+.finale p { font-size: 15.5px; color: #C7CCD8; max-width: 800px; margin-bottom: 26px; }
+.finale-kpis { display: flex; gap: 40px; flex-wrap: wrap; }
+.finale-kpis .fk-val { font-family: var(--font-mono); font-size: 30px; font-weight: 700; color: var(--amber); }
+.finale-kpis .fk-lab { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ---------- FOOTER ---------- */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 36px 0 50px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.resultat-embed {
+  padding: 56px 0 0;
+  scroll-margin-top: 80px;
+}
+
+.resultat-embed iframe {
+  display: block;
+  width: 100%;
+  min-height: 900px;
+  border: 0;
+}
+
+@media (max-width: 860px) {
+  .hero { padding: 50px 0 36px; }
+  .section { padding: 44px 0; }
+}
+</style>
 </head>
 <body>
 
+<nav class="topnav">
+  <div class="topnav-inner">
+    <span class="brand">NuxCine × NuxCine Academy</span>
+    <div class="navlinks">
+      <a href="#resume">Résumé</a>
+      <a href="#contexte">Contexte</a>
+      <a href="#enseignements">Enseignements</a>
+      <a href="#partenaires">Partenaires</a>
+      <a href="#indicateurs">Indicateurs</a>
+      <a href="#sponsors">Sponsors</a>
+      <a href="#synthese">Synthèse</a>
+      <a href="#resultat">Voir les résultats</a>
+    </div>
+  </div>
+</nav>
+
 <div class="wrap">
 
-  <!-- HEADER / HERO -->
+  <!-- HERO -->
   <header class="hero">
-    <div class="hero-eyebrow">Hackathon VTC · Résultats Officiels</div>
-    <h1>VORA</h1>
+    <div class="hero-eyebrow">Hackathon de NuxCine · Bilan Stratégique</div>
+    <h1>Bilan stratégique</h1>
     <p class="hero-sub">
-      <strong>Réinventer la mobilité urbaine au Cameroun.</strong><br>
-      Résultats officiels du jury et tableau de bord analytique pour les participants, partenaires et sponsors.
+      <strong>Ce bilan met en évidence la capacité de NuxCine à mobiliser rapidement une communauté</strong>,
+      à convertir l'intérêt en engagement concret et à structurer un événement collaboratif à fort potentiel.
     </p>
     <div class="hero-meta">
-      <span>Édition <b>Hackathon 2026</b></span>
-      <span>Candidats <b>27 Équipes &amp; Participants Solo</b></span>
-      <span>Barème <b>100 Pts</b></span>
-      <span>Lecture <b>Temps réel</b></span>
-    </div>
+      <span class="year-pill">2026</span>
+      <span>Édition <b>Hackathon NuxCine</b></span>
+      <span>Date <b>29 août 2026</b></span>
+      <span>Campagne <b>4 jours</b></span>
+      <span>Compétition <b>48 heures en ligne</b></span>
 
-    <!-- Mode Switcher -->
-    <div class="view-switcher">
-      <button class="tab-btn active" id="tabLeaderboardBtn" onclick="switchView('leaderboard')">
-        <span>📊</span> Tableau Récapitulatif (27 Équipes)
-      </button>
-      <button class="tab-btn" id="tabSoloBtn" onclick="switchView('solo')">
-        <span>👤</span> Participants Solo
-      </button>
-      <button class="tab-btn" id="tabAnalyticsBtn" onclick="switchView('analytics')">
-        <span>📈</span> Bilan &amp; Analytics Partenaires
-      </button>
-      <button class="tab-btn" id="tabCriteriaBtn" onclick="switchView('criteria')">
-        <span>📜</span> Barème Officiel
-      </button>
     </div>
   </header>
 
-  <!-- SECTION 1: LEADERBOARD -->
-  <section id="leaderboardView" style="padding: 30px 0 60px;">
-    <div class="route-intro">
-      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-        <span>Vue globale &amp; Classement des 27 équipes</span>
-        <div class="category-toggle">
-          <button class="category-btn active" onclick="switchView('leaderboard')">👥 Équipes (27)</button>
-          <button class="category-btn" onclick="switchView('solo')">👤 Participants Solo</button>
-        </div>
-      </div>
-      <button class="btn-action btn-primary" onclick="exportCSV()">📊 Télécharger le classement CSV</button>
-    </div>
-
-    <div class="table-container">
-      <table class="recap-table" id="recapTable">
-        <thead>
-          <tr>
-            <th>Rang</th>
-            <th>Équipe</th>
-            <th>Membres</th>
-            <th>Innov. (/20)</th>
-            <th>Pertin. (/15)</th>
-            <th>Fonct. (/15)</th>
-            <th>Techn. (/15)</th>
-            <th>UI/UX (/10)</th>
-            <th>Vidéo (/10)</th>
-            <th>Impact (/10)</th>
-            <th>Git (/5)</th>
-            <th>Total (/100)</th>
-            <th>Mention</th>
-          </tr>
-        </thead>
-        <tbody id="recapTableBody"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- SECTION SOLO: LEADERBOARD PARTICIPANTS SOLO -->
-  <section id="soloView" style="display: none; padding: 30px 0 60px;">
-    <div class="brief" style="border-left-color: var(--teal); margin-bottom: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
-        <div>
-          <span class="stop-label" style="color: var(--amber);">Hackathon VORA 2026 · Compétition Solo</span>
-          <h2 style="font-family: var(--font-display); font-size: 24px; color: #FFFFFF; margin-top: 4px;">Classement Officiel · Participants Solo</h2>
-          <p style="margin-top: 8px; font-size: 14.5px; color: #C7CCD8; line-height: 1.6;">
-            Candidats ayant choisi de concourir individuellement. Ils sont évalués avec <strong>les mêmes critères d'excellence et le même barème strict de 100 points</strong> que les équipes.
-          </p>
-        </div>
-        <button class="btn-action btn-primary" onclick="exportSoloCSV()">📊 Télécharger le classement Solo (CSV)</button>
-      </div>
-    </div>
-
-    <div class="route-intro">
-      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-        <span>Classement des participants solo</span>
-        <div class="category-toggle">
-          <button class="category-btn" onclick="switchView('leaderboard')">👥 Équipes (27)</button>
-          <button class="category-btn active" onclick="switchView('solo')">👤 Participants Solo</button>
-        </div>
-      </div>
-      <button class="btn-action" onclick="exportSoloCSV()">📑 Export CSV Solo</button>
-    </div>
-
-    <div class="table-container">
-      <table class="recap-table" id="soloTable">
-        <thead>
-          <tr>
-            <th>Rang</th>
-            <th>Candidat Solo</th>
-            <th>Projet / Démo</th>
-            <th>Innov. (/20)</th>
-            <th>Pertin. (/15)</th>
-            <th>Fonct. (/15)</th>
-            <th>Techn. (/15)</th>
-            <th>UI/UX (/10)</th>
-            <th>Vidéo (/10)</th>
-            <th>Impact (/10)</th>
-            <th>Git (/5)</th>
-            <th>Total (/100)</th>
-            <th>Mention</th>
-          </tr>
-        </thead>
-        <tbody id="soloTableBody"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- SECTION 2: ANALYTICS -->
-  <section id="analyticsView" style="display: none; padding: 20px 0 60px;">
-
-    <div class="brief" style="border-left-color: var(--amber);">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
-        <div>
-          <span class="stop-label" style="color: var(--teal);">Nuxcine Hackathon 2026 · Rapport Exécutif</span>
-          <h2 style="font-family: var(--font-display); font-size: 24px; color: #FFFFFF; margin-top: 4px;">Bilan Global &amp; Performance des Candidats</h2>
-        </div>
-        <button class="btn-action btn-primary" onclick="window.print()">📑 Imprimer la Synthèse Partenaires</button>
-      </div>
-      <p style="margin-top: 14px; font-size: 15px; color: #C7CCD8; line-height: 1.65;">
-        En <strong>2026</strong>, Nuxcine a réuni <strong>27 équipes</strong> (soit plus de <strong>135 développeurs, ingénieurs et concepteurs UI/UX</strong>) autour du grand défi <strong>VORA : Réinventer la mobilité urbaine au Cameroun</strong>. Évalués rigoureusement selon 8 critères techniques et de faisabilité locale, voici la vue d'ensemble et les indicateurs clés destinés à nos partenaires.
-      </p>
-    </div>
+  <!-- RESUME EXECUTIF -->
+  <section class="section" id="resume">
+    <span class="section-tag">Résumé exécutif</span>
+    <h2>Les chiffres du hackathon</h2>
+    <p class="section-lede">En seulement quatre jours de campagne, NuxCine a converti un fort intérêt initial en une communauté structurée et prête à collaborer.</p>
 
     <div class="kpi-grid">
       <div class="kpi-card">
-        <span class="kpi-title">Moyenne Générale</span>
-        <div class="kpi-value" id="kpiAvgScore">00.0 <small>/ 100</small></div>
-        <span class="kpi-sub" id="kpiAvgGrade">Mention : En attente</span>
+        <span class="kpi-title">Personnes inscrites</span>
+        <div class="kpi-value">252</div>
+        <span class="kpi-sub">Via le site, en 4 jours de campagne</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-title">Major de Promotion (Top 1)</span>
-        <div class="kpi-value" id="kpiTopScore">00 <small>/ 100</small></div>
-        <span class="kpi-sub" id="kpiTopTeamName" style="color: var(--teal); font-weight: 500;">-</span>
+        <span class="kpi-title">Participations confirmées</span>
+        <div class="kpi-value">120</div>
+        <span class="kpi-sub">Base engagée et directement activable</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-title">Projets Qualifiés (≥ 70 pts)</span>
-        <div class="kpi-value" id="kpiPassRate">0 <small>%</small></div>
-        <span class="kpi-sub" id="kpiPassCount">0 équipe(s) au niveau</span>
+        <span class="kpi-title">Équipes constituées</span>
+        <div class="kpi-value">28</div>
+        <span class="kpi-sub">Toutes les personnes confirmées ont été réparties</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-title">Équipes Évaluées</span>
-        <div class="kpi-value" id="kpiEvalCount">0 <small>/ 27</small></div>
-        <span class="kpi-sub" id="kpiEvalPercent">0% complété</span>
+        <span class="kpi-title">Taux de confirmation</span>
+        <div class="kpi-value">47,6 <small>%</small></div>
+        <span class="kpi-sub">Près d'une inscription sur deux convertie</span>
       </div>
     </div>
 
-    <div class="route-intro" style="margin-bottom: 20px;">
-      <span>🏆 Podium des Lauréats du Hackathon VORA</span>
+    <div class="brief">
+      <p>Les 120 personnes confirmées ont toutes pu être structurées en équipes, démontrant une organisation opérationnelle cohérente.</p>
+      <p>Cette mobilisation rapide constitue une preuve d'attractivité pour les marques souhaitant toucher une communauté engagée autour de l'innovation, de la créativité et du travail collaboratif.</p>
     </div>
 
-    <div class="podium-grid">
-      <div class="podium-card podium-silver" id="podiumRank2Card">
-        <span class="podium-medal">🥈</span>
-        <span class="podium-rank-tag">2ème Place · Argent</span>
-        <div class="podium-team-title" id="podiumRank2Name">En attente</div>
-        <div class="podium-members" id="podiumRank2Members">-</div>
-        <div class="podium-score" id="podiumRank2Score">-- / 100</div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Du clic à l'équipe</h3>
+          <p>Répartition des 252 inscriptions entre confirmations et équipes formées.</p>
+        </div>
       </div>
-      <div class="podium-card podium-gold" id="podiumRank1Card">
-        <span class="podium-medal">🥇</span>
-        <span class="podium-rank-tag" style="color: var(--amber);">1ère Place · Champion</span>
-        <div class="podium-team-title" id="podiumRank1Name">En attente</div>
-        <div class="podium-members" id="podiumRank1Members">-</div>
-        <div class="podium-score" style="color: var(--amber);" id="podiumRank1Score">-- / 100</div>
-      </div>
-      <div class="podium-card podium-bronze" id="podiumRank3Card">
-        <span class="podium-medal">🥉</span>
-        <span class="podium-rank-tag">3ème Place · Bronze</span>
-        <div class="podium-team-title" id="podiumRank3Name">En attente</div>
-        <div class="podium-members" id="podiumRank3Members">-</div>
-        <div class="podium-score" id="podiumRank3Score">-- / 100</div>
-      </div>
+      <div class="chart-wrapper"><canvas id="funnelChart"></canvas></div>
+    </div>
+  </section>
+
+  <!-- CONTEXTE -->
+  <section class="section" id="contexte">
+    <span class="section-tag">01 · Contexte</span>
+    <h2>Contexte de l'initiative</h2>
+    <p class="section-lede">
+      NuxCine a organisé un hackathon le <strong>samedi 29 août 2026</strong>. La campagne de communication précédant l'événement
+      s'est déroulée sur une période courte de quatre jours.
+    </p>
+    <div class="brief">
+      <p>Malgré ce délai limité, l'initiative a suscité un intérêt important : <strong>252 personnes</strong> se sont inscrites via le site,
+      dont <strong>120 ont confirmé</strong> leur participation. Ces participants ont ensuite été répartis en <strong>28 équipes</strong>.</p>
     </div>
 
-    <div class="charts-grid">
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3>📈 Courbe de Distribution des Notes (27 Équipes)</h3>
-          <p>Visualisation comparative des scores ordonnés du 1er au 27e avec la ligne de moyenne globale.</p>
-        </div>
-        <div class="chart-wrapper" style="height: 320px;">
-          <canvas id="chartCurveScores"></canvas>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <h3>Chiffres clés</h3>
+          <p>Vue d'ensemble de la mobilisation en 4 jours de campagne.</p>
         </div>
       </div>
-
-      <div class="charts-row-dual">
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>🍩 Répartition des Mentions Jury</h3>
-            <p>Répartition des équipes selon l'échelle officielle de notation.</p>
-          </div>
-          <div class="chart-wrapper" style="height: 280px;">
-            <canvas id="chartDonutMentions"></canvas>
-          </div>
-        </div>
-        <div class="chart-card">
-          <div class="chart-header">
-            <h3>🕸️ Radar des Compétences Globales</h3>
-            <p>Moyenne de la promotion sur chacun des 8 critères techniques.</p>
-          </div>
-          <div class="chart-wrapper" style="height: 280px;">
-            <canvas id="chartRadarSkills"></canvas>
-          </div>
-        </div>
+      <div class="kpi-grid" style="margin-top: 6px;">
+        <div class="kpi-card"><span class="kpi-title">Jours</span><div class="kpi-value">04</div><span class="kpi-sub">Capacité de mobilisation rapide</span></div>
+        <div class="kpi-card"><span class="kpi-title">Personnes / équipe</span><div class="kpi-value">05</div><span class="kpi-sub">Format favorable à la collaboration</span></div>
+        <div class="kpi-card"><span class="kpi-title">Équipes</span><div class="kpi-value">28</div><span class="kpi-sub">Volume significatif de projets potentiels</span></div>
+        <div class="kpi-card"><span class="kpi-title">Confirmés</span><div class="kpi-value">120</div><span class="kpi-sub">Base engagée et directement activable</span></div>
       </div>
     </div>
   </section>
 
-  <!-- SECTION 3: BAREME -->
-  <section id="criteriaView" style="display: none; padding: 20px 0 60px;">
-    <div class="brief">
-      <h3>Barème Officiel du Hackathon VORA</h3>
-      <p>Ce barème standardisé est utilisé pour évaluer les 27 équipes sur une base stricte de 100 points.</p>
+  <!-- ENSEIGNEMENTS -->
+  <section class="section" id="enseignements">
+    <span class="section-tag">02 · Analyse</span>
+    <h2>Enseignements stratégiques</h2>
+    <p class="section-lede">Quatre constats issus des résultats de la campagne, à considérer pour les prochaines éditions.</p>
+
+    <div class="insight-grid">
+      <div class="insight-card">
+        <h3>Une forte attractivité obtenue dans un délai court</h3>
+        <p>En 4 jours, NuxCine a généré 252 inscriptions, soit une moyenne indicative de 63 inscriptions par jour de communication. Ce rythme témoigne d'une bonne capacité à activer rapidement une audience autour d'une initiative événementielle.</p>
+      </div>
+      <div class="insight-card">
+        <h3>Une organisation adaptée à la collaboration</h3>
+        <p>La répartition des participants en 28 équipes de 5 montre la capacité de NuxCine à transformer une mobilisation individuelle en une dynamique collective structurée, favorisant l'idéation et l'émergence de talents.</p>
+      </div>
+      <div class="insight-card">
+        <h3>Une communauté engagée et mobilisable</h3>
+        <p>Les 120 confirmations représentent 47,6 % des inscriptions enregistrées, une audience concrète, volontaire et réceptive plutôt qu'une simple portée numérique.</p>
+      </div>
+      <div class="insight-card">
+        <h3>Un potentiel de progression mesurable</h3>
+        <p>L'écart de 132 personnes entre inscriptions et confirmations est un levier d'optimisation : relances automatisées, rappels multicanaux et confirmation en deux étapes pourraient améliorer la conversion pour les prochaines éditions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VALEUR PARTENAIRES -->
+  <section class="section" id="partenaires">
+    <span class="section-tag">03 · Partenariats</span>
+    <h2>Valeur proposée aux partenaires</h2>
+    <p class="section-lede">Ce que le hackathon peut apporter concrètement à une marque partenaire.</p>
+
+    <div class="value-grid">
+      <div class="value-card"><div class="vh">Renforcer sa visibilité</div><div class="vb">Auprès d'une communauté intéressée par l'innovation et la création.</div></div>
+      <div class="value-card"><div class="vh">Associer son image</div><div class="vb">À une initiative dynamique, collaborative et orientée vers les solutions.</div></div>
+      <div class="value-card"><div class="vh">Mobiliser ses collaborateurs</div><div class="vb">Comme mentors, jurés, intervenants ou experts.</div></div>
+      <div class="value-card"><div class="vh">Détecter des talents</div><div class="vb">Des idées ou des projets prometteurs issus des équipes.</div></div>
+      <div class="value-card"><div class="vh">Créer du contenu de marque</div><div class="vb">Avant, pendant et après l'événement.</div></div>
+      <div class="value-card"><div class="vh">Proposer un défi métier réel</div><div class="vb">Aux équipes participantes.</div></div>
+      <div class="value-card"><div class="vh">Développer sa responsabilité sociétale</div><div class="vb">En soutenant l'apprentissage, l'employabilité et l'entrepreneuriat.</div></div>
     </div>
 
-    <div class="table-container" style="margin-top: 24px;">
-      <table class="recap-table">
-        <thead>
-          <tr>
-            <th>Critère</th>
-            <th>Description détaillée</th>
-            <th>Points</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Innovation</td>
-            <td>Originalité de la solution et valeur ajoutée par rapport aux solutions existantes.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">20 pts</td>
-          </tr>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Pertinence de la solution</td>
-            <td>Réponse au problème de mobilité, adéquation avec les besoins des utilisateurs.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
-          </tr>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Fonctionnalités</td>
-            <td>Richesse des fonctionnalités, respect du cahier des charges, fluidité du parcours utilisateur.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
-          </tr>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Qualité technique</td>
-            <td>Architecture, qualité du code, intégration des API, stabilité de l'application.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">15 pts</td>
-          </tr>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Design &amp; Expérience utilisateur (UI/UX)</td>
-            <td>Interface, ergonomie, accessibilité, cohérence graphique.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
-          </tr>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Présentation vidéo</td>
-            <td>Clarté de la démonstration, qualité des explications, capacité à présenter le projet.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
-          </tr>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Impact &amp; Faisabilité</td>
-            <td>Potentiel d'adoption, viabilité du projet, possibilité de déploiement au Cameroun.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">10 pts</td>
-          </tr>
-          <tr>
-            <td style="color: var(--amber); font-weight: 600;">Qualité du dépôt GitHub</td>
-            <td>Organisation du projet, documentation (README), structure du dépôt, facilité d'installation.</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--teal);">5 pts</td>
-          </tr>
-          <tr style="background: var(--surface-2);">
-            <td style="color: #FFFFFF; font-weight: bold;">TOTAL OFFICIEL</td>
-            <td style="color: #FFFFFF;">Base stricte de notation sur 100 points</td>
-            <td style="font-family: var(--font-mono); font-weight: bold; color: var(--amber); font-size: 16px;">100 pts</td>
-          </tr>
-        </tbody>
-      </table>
+    <h2 style="margin-top:44px; font-size: 24px;">Formes de partenariat proposées</h2>
+    <div class="partner-grid" style="margin-top: 18px;">
+      <div class="partner-card">
+        <span class="pt">Partenaire principal</span>
+        <p>Le plus visible et le plus associé à l'événement : place prioritaire en communication, prise de parole officielle, jury, challenge, et accès direct aux projets et talents.</p>
+      </div>
+      <div class="partner-card">
+        <span class="pt">Partenaire technique</span>
+        <p>Apporte des ressources techniques (outils, logiciels, licences, expertise), peut animer des ateliers et accompagner les participants comme mentor.</p>
+      </div>
+      <div class="partner-card">
+        <span class="pt">Partenaire en services</span>
+        <p>Contribue sans nécessairement apporter d'argent : salle, restauration, transport, hébergement, impression, matériel ou dotations.</p>
+      </div>
+      <div class="partner-card">
+        <span class="pt">Partenaire financier</span>
+        <p>Soutient l'événement par une contribution financière couvrant organisation, récompenses, logistique ou production ; sa marque est mise en avant selon son niveau de contribution.</p>
+      </div>
     </div>
+  </section>
+
+  <!-- CONTREPARTIES & INDICATEURS -->
+  <section class="section" id="indicateurs">
+    <span class="section-tag">04 · Suivi</span>
+    <h2>Contreparties envisageables</h2>
+    <p class="section-lede">Ce qu'un partenaire peut recevoir en retour de sa contribution.</p>
+    <ul class="check-list two-col-list">
+      <li>Présence du logo sur les supports digitaux et physiques</li>
+      <li>Mentions sur les réseaux sociaux et dans les contenus éditoriaux</li>
+      <li>Stand ou espace d'exposition pendant l'événement</li>
+      <li>Intervention d'un représentant de l'entreprise</li>
+      <li>Participation au jury ou au mentorat</li>
+      <li>Remise d'un prix portant le nom du partenaire</li>
+      <li>Production de photos, vidéos, interviews ou témoignages de marque</li>
+      <li>Rapport post-événement présentant les résultats et la visibilité obtenue</li>
+    </ul>
+
+    <h2 style="margin-top:44px; font-size: 24px;">Indicateurs à suivre</h2>
+    <p class="section-lede">Pour renforcer la valeur mesurable du partenariat, NuxCine pourrait suivre et partager :</p>
+    <ul class="check-list two-col-list">
+      <li>Portée totale de la campagne de communication</li>
+      <li>Nombre de vues, clics et interactions par canal</li>
+      <li>Coût d'acquisition par inscription, si des dépenses média sont engagées</li>
+      <li>Taux de confirmation et taux de présence effective le jour de l'événement</li>
+      <li>Profil des participants : compétences, secteurs, tranches d'âge et localisation, avec les consentements appropriés</li>
+      <li>Nombre de projets effectivement présentés</li>
+      <li>Nombre de mentors, jurés et entreprises impliqués</li>
+      <li>Satisfaction des participants et partenaires</li>
+      <li>Retombées médiatiques et contenus produits</li>
+      <li>Suites données aux projets : incubation, recrutement, collaboration ou financement</li>
+    </ul>
+  </section>
+
+  <!-- SPONSORS -->
+  <section class="section" id="sponsors">
+    <span class="section-tag">05 · Sponsors</span>
+    <h2>Présentation des sponsors</h2>
+    <p class="section-lede">Les sponsors jouent un rôle essentiel dans la réussite du hackathon. Leur contribution permet de renforcer la qualité de l'organisation, d'améliorer l'expérience des participants et de donner plus de visibilité aux projets développés pendant l'événement.</p>
+
+    <div class="sponsor-grid">
+      <div class="sponsor-tile sponsor-yoca">
+        <div class="sponsor-logo">
+          <img src="logo/image-1789650482135.png" alt="YOCA MEDIA">
+        </div>
+        <span>Média digital</span>
+      </div>
+
+      <div class="sponsor-tile sponsor-iugee">
+        <div class="sponsor-logo">
+          <img src="logo/image-1789650493238.png" alt="IUGEE">
+        </div>
+        <span>Institut universitaire</span>
+      </div>
+
+      <div class="sponsor-tile sponsor-gold">
+        <div class="sponsor-logo">
+          <img src="logo/image-1789650507717.png" alt="GOLD-BIJOUX">
+        </div>
+        <span>Bijouterie artisanale</span>
+      </div>
+
+      <div class="sponsor-tile sponsor-liv">
+        <div class="sponsor-logo">
+          <img src="logo/image-1789650519927.png" alt="LIV">
+        </div>
+        <span>Livraison alimentaire</span>
+      </div>
+
+      <div class="sponsor-tile sponsor-mama">
+        <div class="sponsor-logo">
+          <img src="logo/image-1789650528714.png" alt="MamaLoh">
+        </div>
+        <span>Santé féminine</span>
+      </div>
+    </div>
+
+    <div class="spotlight">
+      <div class="spotlight-text">
+        <h3>YOCA Media</h3>
+        <p>Yoca Media est le pôle communication et média digital de NuxCine, qui met en lumière l'actualité, l'entrepreneuriat, l'innovation et les parcours inspirants. Sa mission est de raconter les initiatives qui façonnent l'avenir et de donner une voix aux jeunes talents camerounais.</p>
+        <p>Grâce à une communauté construite en seulement sept mois, Yoca Media offre au Hackathon NuxCine une visibilité accrue auprès d'une audience jeune, connectée et engagée — avant, pendant et après l'événement.</p>
+      </div>
+      <div class="spotlight-stat">
+        <span class="sub">En 7 mois</span>
+        <div class="big">93 346 abonnés</div>
+        <span class="cap">Une stratégie de communication bien pensée peut changer la donne.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SYNTHESE -->
+  <section class="section" id="synthese">
+    <span class="section-tag">Synthèse finale</span>
+    <h2>Une base solide pour bâtir des partenariats</h2>
+    <div class="finale">
+      <p>Le hackathon du 29 août 2026 démontre que NuxCine dispose d'une capacité réelle de mobilisation, d'un public engagé et d'un format événementiel structurable à plus grande échelle. Les résultats obtenus en seulement quatre jours constituent une base solide pour construire des partenariats autour de la visibilité, de l'innovation, du recrutement, de la responsabilité sociétale et du développement de projets.</p>
+      <div class="finale-kpis">
+        <div><div class="fk-val">252</div><div class="fk-lab">Personnes inscrites</div></div>
+        <div><div class="fk-val">120</div><div class="fk-lab">Participations confirmées</div></div>
+        <div><div class="fk-val">28</div><div class="fk-lab">Équipes constituées</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTATS DU HACKATHON -->
+  <section class="resultat-embed" id="resultat" aria-label="Résultats du hackathon">
+    <iframe
+      src="hackathon_resultat/index.html"
+      title="Résultats du Hackathon VORA"
+      loading="lazy"
+      scrolling="no"></iframe>
   </section>
 
   <footer>
-    <span>VORA — Réinventer la mobilité urbaine · Nuxcine Hackathon 2026</span>
-    <span>Résultats officiels · 27 Équipes · Barème sur 100 pts</span>
+    <span>Bilan stratégique — Hackathon de NuxCine</span>
+    <span>252 inscrits · 120 confirmés · 28 équipes</span>
   </footer>
 
 </div>
 
-<div class="toast" id="toast">Données actualisées</div>
+<script>
+const resultatFrame = document.querySelector('.resultat-embed iframe');
 
-<script type="module" src="js/public.js"></script>
+function resizeResultatFrame() {
+  if (!resultatFrame.contentDocument) return;
+  resultatFrame.style.height = `${resultatFrame.contentDocument.documentElement.scrollHeight}px`;
+}
+
+resultatFrame.addEventListener('load', () => {
+  resizeResultatFrame();
+  new ResizeObserver(resizeResultatFrame).observe(resultatFrame.contentDocument.documentElement);
+});
+</script>
+
+<script>
+const ctx = document.getElementById('funnelChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['Inscrits', 'Confirmés', 'En équipes'],
+    datasets: [{
+      label: 'Personnes',
+      data: [252, 120, 120],
+      backgroundColor: ['#4A90E2', '#43D9C0', '#FFB648'],
+      borderRadius: 8,
+      barThickness: 60
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#171C26',
+        titleColor: '#FFB648',
+        bodyColor: '#EDEEF1',
+        borderColor: '#232838',
+        borderWidth: 1,
+        titleFont: { family: 'Space Grotesk', size: 14, weight: 'bold' },
+        bodyFont: { family: 'IBM Plex Mono', size: 12 },
+        padding: 12
+      }
+    },
+    scales: {
+      y: { beginAtZero: true, max: 280, grid: { color: '#232838' }, ticks: { color: '#8A93A6', font: { family: 'IBM Plex Mono' } } },
+      x: { grid: { display: false }, ticks: { color: '#EDEEF1', font: { family: 'IBM Plex Mono', size: 13 } } }
+    }
+  }
+});
+</script>
 
 </body>
 </html>

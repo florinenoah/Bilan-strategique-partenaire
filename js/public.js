@@ -34,6 +34,12 @@ const TEAMS_DIRECTORY = [
   { id: 27, name: "Equipe 27-Inferno", members: "Tchantchou1, gregalexandre17b-godson, edmondlandry08-rgb, juanngambi-source" }
 ];
 
+const DEFAULT_SOLOS = [
+  { id: "solo-1", name: "Alexandre Mbarga", project: "Vora Express Mobility", github: "https://github.com/alex-mbarga/vora-express" },
+  { id: "solo-2", name: "Brenda Talla", project: "SmartRide Douala", github: "https://github.com/brenda-talla/smartride" },
+  { id: "solo-3", name: "Cedric Kamdem", project: "Vora Flow Urban", github: "https://github.com/ckamdem/vora-flow" }
+];
+
 const CRITERIA_KEYS = [
   { key: 'innovation', max: 20, title: 'Innovation' },
   { key: 'pertinence', max: 15, title: 'Pertinence' },
@@ -46,6 +52,7 @@ const CRITERIA_KEYS = [
 ];
 
 let evaluations = {};
+let soloEvaluations = {};
 let chartCurve = null;
 let chartDonut = null;
 let chartRadar = null;
@@ -107,6 +114,38 @@ function mergeWithDirectory(remoteTeams) {
   return merged;
 }
 
+// Fusionne les données des candidats solo
+function mergeSolos(remoteSolos) {
+  const localSolos = JSON.parse(localStorage.getItem('vora_solos') || '{}');
+  const source = (remoteSolos && Object.keys(remoteSolos).length > 0)
+    ? remoteSolos
+    : (Object.keys(localSolos).length > 0 ? localSolos : {});
+
+  const merged = {};
+  if (Object.keys(source).length === 0) {
+    DEFAULT_SOLOS.forEach(s => {
+      merged[s.id] = {
+        ...s,
+        scores: { innovation: 0, pertinence: 0, fonctionnalites: 0, technique: 0, uiux: 0, video: 0, impact: 0, github: 0 },
+        notes: ""
+      };
+    });
+  } else {
+    Object.keys(source).forEach(id => {
+      const s = source[id];
+      merged[id] = {
+        id: s.id || id,
+        name: s.name || "Candidat Solo",
+        project: s.project || "",
+        github: s.github || "",
+        scores: s.scores || { innovation: 0, pertinence: 0, fonctionnalites: 0, technique: 0, uiux: 0, video: 0, impact: 0, github: 0 },
+        notes: s.notes || ""
+      };
+    });
+  }
+  return merged;
+}
+
 // ============================================================
 // SWITCH VIEW
 // ============================================================
@@ -114,11 +153,13 @@ function mergeWithDirectory(remoteTeams) {
 function switchView(viewName) {
   const views = {
     leaderboard: document.getElementById('leaderboardView'),
+    solo: document.getElementById('soloView'),
     analytics: document.getElementById('analyticsView'),
     criteria: document.getElementById('criteriaView')
   };
   const tabs = {
     leaderboard: document.getElementById('tabLeaderboardBtn'),
+    solo: document.getElementById('tabSoloBtn'),
     analytics: document.getElementById('tabAnalyticsBtn'),
     criteria: document.getElementById('tabCriteriaBtn')
   };
@@ -130,11 +171,12 @@ function switchView(viewName) {
   if (tabs[viewName]) tabs[viewName].classList.add('active');
 
   if (viewName === 'leaderboard') renderLeaderboard();
+  if (viewName === 'solo') renderSoloLeaderboard();
   if (viewName === 'analytics') renderAnalytics();
 }
 
 // ============================================================
-// RENDER LEADERBOARD
+// RENDER LEADERBOARD (ÉQUIPES)
 // ============================================================
 
 function renderLeaderboard() {
@@ -167,6 +209,61 @@ function renderLeaderboard() {
       <td>${team.scores.github || 0}</td>
       <td class="score-cell">${team.total}</td>
       <td><span class="grade-badge ${team.grade.cls}" style="font-size: 11px; padding: 3px 8px;">${team.grade.label}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ============================================================
+// RENDER SOLO LEADERBOARD (PARTICIPANTS SOLO)
+// ============================================================
+
+function renderSoloLeaderboard() {
+  const tbody = document.getElementById('soloTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const soloList = Object.values(soloEvaluations).map(s => {
+    const total = calculateTotal(s);
+    return { ...s, total, grade: getGradeInfo(total) };
+  });
+
+  soloList.sort((a, b) => b.total - a.total);
+
+  if (soloList.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td colspan="13" style="text-align: center; padding: 30px; color: var(--text-muted); font-family: var(--font-mono);">
+        Aucun participant solo pour le moment.
+      </td>
+    `;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  soloList.forEach((solo, index) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family: var(--font-mono); font-weight: bold; color: ${index < 3 && solo.total > 0 ? 'var(--amber)' : 'var(--text-muted)'};">
+        ${index === 0 && solo.total > 0 ? '🥇 1' : index === 1 && solo.total > 0 ? '🥈 2' : index === 2 && solo.total > 0 ? '🥉 3' : '#' + (index + 1)}
+      </td>
+      <td class="team-cell">
+        <strong>${solo.name}</strong> <span class="solo-tag" style="margin-left: 6px;">Solo</span>
+      </td>
+      <td class="members-cell" title="${solo.project || '-'}">
+        <span>${solo.project || '-'}</span>
+        ${solo.github ? `<br><a href="${solo.github}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--teal);">🔗 GitHub</a>` : ''}
+      </td>
+      <td>${solo.scores.innovation || 0}</td>
+      <td>${solo.scores.pertinence || 0}</td>
+      <td>${solo.scores.fonctionnalites || 0}</td>
+      <td>${solo.scores.technique || 0}</td>
+      <td>${solo.scores.uiux || 0}</td>
+      <td>${solo.scores.video || 0}</td>
+      <td>${solo.scores.impact || 0}</td>
+      <td>${solo.scores.github || 0}</td>
+      <td class="score-cell">${solo.total}</td>
+      <td><span class="grade-badge ${solo.grade.cls}" style="font-size: 11px; padding: 3px 8px;">${solo.grade.label}</span></td>
     `;
     tbody.appendChild(tr);
   });
@@ -396,24 +493,62 @@ function exportCSV() {
   link.remove();
 }
 
+function exportSoloCSV() {
+  let csv = "ID;Candidat;Projet;GitHub;Innovation (/20);Pertinence (/15);Fonctionnalites (/15);Qualite Technique (/15);UI UX (/10);Video Pitch (/10);Impact Faisabilite (/10);GitHub (/5);Total (/100);Mention\n";
+
+  const soloList = Object.values(soloEvaluations).sort((a, b) => calculateTotal(b) - calculateTotal(a));
+
+  soloList.forEach(solo => {
+    const total = calculateTotal(solo);
+    const grade = getGradeInfo(total);
+    const safeName = (solo.name || '').replace(/"/g, '""');
+    const safeProject = (solo.project || '').replace(/"/g, '""');
+    const safeGit = (solo.github || '').replace(/"/g, '""');
+    csv += `${solo.id};"${safeName}";"${safeProject}";"${safeGit}";${solo.scores.innovation || 0};${solo.scores.pertinence || 0};${solo.scores.fonctionnalites || 0};${solo.scores.technique || 0};${solo.scores.uiux || 0};${solo.scores.video || 0};${solo.scores.impact || 0};${solo.scores.github || 0};${total};"${grade.label}"\n`;
+  });
+
+  const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "classement_vora_hackathon_solos.csv");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 // ============================================================
 // SUBSCRIPTION TEMPS RÉEL
 // ============================================================
 
-subscribeToChanges((remoteTeams) => {
-  evaluations = mergeWithDirectory(remoteTeams);
+subscribeToChanges((data) => {
+  if (data && data.teams) {
+    evaluations = mergeWithDirectory(data.teams);
+    soloEvaluations = mergeSolos(data.solos);
+  } else {
+    evaluations = mergeWithDirectory(data);
+    soloEvaluations = mergeSolos(null);
+  }
 
   // Re-render la vue active
   const activeTab = document.querySelector('.tab-btn.active');
   if (activeTab) {
     if (activeTab.id === 'tabLeaderboardBtn') renderLeaderboard();
+    if (activeTab.id === 'tabSoloBtn') renderSoloLeaderboard();
     if (activeTab.id === 'tabAnalyticsBtn') renderAnalytics();
   }
 });
 
 // Affichage initial
 document.addEventListener('DOMContentLoaded', () => {
+  // Pré-chargement immédiat depuis le cache local pour fluidité maximale
+  const localTeams = JSON.parse(localStorage.getItem('vora_teams') || '{}');
+  const localSolos = JSON.parse(localStorage.getItem('vora_solos') || '{}');
+  evaluations = mergeWithDirectory(localTeams);
+  soloEvaluations = mergeSolos(localSolos);
+
   window.switchView = switchView;
   window.exportCSV = exportCSV;
+  window.exportSoloCSV = exportSoloCSV;
   switchView('leaderboard');
 });

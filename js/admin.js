@@ -1,6 +1,6 @@
 // js/admin.js
 import {
-  loadAllEvaluations, saveTeam,
+  loadAllEvaluations, saveTeam, saveSolo, deleteSolo,
   signInWithEmailAndPassword, onAuthStateChanged, signOut, auth
 } from './db.js';
 import { db } from './config.js';
@@ -38,6 +38,12 @@ const TEAMS_DIRECTORY = [
   { id: 27, name: "Equipe 27-Inferno", members: "Tchantchou1, gregalexandre17b-godson, edmondlandry08-rgb, juanngambi-source" }
 ];
 
+const DEFAULT_SOLOS = [
+  { id: "solo-1", name: "Alexandre Mbarga", project: "Vora Express Mobility", github: "https://github.com/alex-mbarga/vora-express" },
+  { id: "solo-2", name: "Brenda Talla", project: "SmartRide Douala", github: "https://github.com/brenda-talla/smartride" },
+  { id: "solo-3", name: "Cedric Kamdem", project: "Vora Flow Urban", github: "https://github.com/ckamdem/vora-flow" }
+];
+
 const CRITERIA_KEYS = [
   { key: 'innovation', max: 20, title: 'Innovation' },
   { key: 'pertinence', max: 15, title: 'Pertinence' },
@@ -49,8 +55,13 @@ const CRITERIA_KEYS = [
   { key: 'github', max: 5, title: 'GitHub' }
 ];
 
+let currentCategory = 'teams'; // 'teams' | 'solos'
 let currentTeamId = 1;
+let currentSoloId = 'solo-1';
 let evaluations = {};
+let soloEvaluations = {};
+let solosDirectory = [];
+
 let chartCurve = null;
 let chartDonut = null;
 let chartRadar = null;
@@ -69,8 +80,22 @@ async function initData() {
     showToast("❌ Erreur de chargement");
   }
 
-  evaluations = remote || {};
+  // Lecture du cache local si Firestore est vide ou hors-ligne
+  const localTeams = JSON.parse(localStorage.getItem('vora_teams') || '{}');
+  const localSolos = JSON.parse(localStorage.getItem('vora_solos') || '{}');
 
+  if (remote && remote.teams) {
+    evaluations = remote.teams;
+    soloEvaluations = remote.solos || {};
+  } else if (remote && typeof remote === 'object' && !remote.teams) {
+    evaluations = remote;
+    soloEvaluations = localSolos;
+  } else {
+    evaluations = localTeams;
+    soloEvaluations = localSolos;
+  }
+
+  // Initialisation du répertoire des équipes
   TEAMS_DIRECTORY.forEach(t => {
     if (!evaluations[t.id]) {
       evaluations[t.id] = {
@@ -95,37 +120,140 @@ async function initData() {
     }
   });
 
-  populateTeamSelect();
-  loadTeamData(currentTeamId);
+  // Initialisation des candidats solos si vides
+  if (Object.keys(soloEvaluations).length === 0) {
+    DEFAULT_SOLOS.forEach(s => {
+      soloEvaluations[s.id] = {
+        id: s.id,
+        name: s.name,
+        project: s.project,
+        github: s.github,
+        scores: {
+          innovation: 0, pertinence: 0, fonctionnalites: 0,
+          technique: 0, uiux: 0, video: 0, impact: 0, github: 0
+        },
+        notes: ""
+      };
+    });
+  }
+
+  updateSolosDirectory();
+
+  if (solosDirectory.length > 0 && !soloEvaluations[currentSoloId]) {
+    currentSoloId = solosDirectory[0].id;
+  }
+
+  populateCandidateSelect();
+  loadCandidateData();
 }
 
-function populateTeamSelect() {
+function updateSolosDirectory() {
+  solosDirectory = Object.values(soloEvaluations).map(s => ({
+    id: s.id,
+    name: s.name,
+    project: s.project || "",
+    github: s.github || ""
+  }));
+}
+
+// ============================================================
+// GESTION DU MODE / CATÉGORIE (ÉQUIPES VS SOLOS)
+// ============================================================
+
+function setCategory(cat) {
+  currentCategory = cat;
+
+  const btnTeams = document.getElementById('catBtnTeams');
+  const btnSolos = document.getElementById('catBtnSolos');
+  const labelEl = document.getElementById('candidateSelectLabel');
+  const barAddSolo = document.getElementById('barAddSoloBtn');
+
+  if (cat === 'teams') {
+    if (btnTeams) btnTeams.classList.add('active');
+    if (btnSolos) btnSolos.classList.remove('active');
+    if (labelEl) labelEl.textContent = "Sélectionner l'équipe à évaluer";
+    if (barAddSolo) barAddSolo.style.display = 'none';
+  } else {
+    if (btnTeams) btnTeams.classList.remove('active');
+    if (btnSolos) btnSolos.classList.add('active');
+    if (labelEl) labelEl.textContent = "Sélectionner le candidat solo à évaluer";
+    if (barAddSolo) barAddSolo.style.display = 'inline-flex';
+  }
+
+  populateCandidateSelect();
+  loadCandidateData();
+}
+
+function populateCandidateSelect() {
   const select = document.getElementById('teamSelect');
   if (!select) return;
-  const targetId = currentTeamId;
   select.innerHTML = '';
-  TEAMS_DIRECTORY.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t.id;
-    const team = evaluations[t.id];
-    const isDone = isTeamEvaluated(team);
-    opt.textContent = `${team.name} ${isDone ? '✓ (' + calculateTotal(team) + ' pts)' : ''}`;
-    if (t.id === targetId) opt.selected = true;
-    select.appendChild(opt);
-  });
-  select.value = targetId;
+
+  if (currentCategory === 'teams') {
+    TEAMS_DIRECTORY.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      const team = evaluations[t.id];
+      const isDone = isEvaluated(team);
+      opt.textContent = `${team.name} ${isDone ? '✓ (' + calculateTotal(team) + ' pts)' : ''}`;
+      if (t.id === currentTeamId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.value = currentTeamId;
+  } else {
+    if (solosDirectory.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = "";
+      opt.textContent = "Aucun candidat solo enregistré";
+      select.appendChild(opt);
+      return;
+    }
+
+    solosDirectory.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      const solo = soloEvaluations[s.id];
+      const isDone = isEvaluated(solo);
+      opt.textContent = `👤 ${s.name} ${isDone ? '✓ (' + calculateTotal(solo) + ' pts)' : ''}`;
+      if (s.id === currentSoloId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.value = currentSoloId;
+  }
 }
 
-function isTeamEvaluated(team) {
-  if (!team) return false;
-  const scores = Object.values(team.scores || {});
-  return scores.some(s => s > 0) || (team.notes && team.notes.trim().length > 0);
+function onCandidateSelected(val) {
+  if (!val) return;
+  if (currentCategory === 'teams') {
+    currentTeamId = parseInt(val);
+  } else {
+    currentSoloId = val;
+  }
+  loadCandidateData();
 }
 
-function calculateTotal(team) {
+function getCurrentCandidate() {
+  if (currentCategory === 'teams') {
+    return evaluations[currentTeamId] || null;
+  }
+  return soloEvaluations[currentSoloId] || null;
+}
+
+// ============================================================
+// CALCULS & NOTATIONS UNIFIÉS (MÊME BARÈME SUR 100 POINTS)
+// ============================================================
+
+function isEvaluated(candidate) {
+  if (!candidate) return false;
+  const scores = Object.values(candidate.scores || {});
+  return scores.some(s => s > 0) || (candidate.notes && candidate.notes.trim().length > 0);
+}
+
+function calculateTotal(candidate) {
+  if (!candidate) return 0;
   let total = 0;
   for (const c of CRITERIA_KEYS) {
-    total += parseFloat((team.scores && team.scores[c.key]) || 0);
+    total += parseFloat((candidate.scores && candidate.scores[c.key]) || 0);
   }
   return Math.min(100, total);
 }
@@ -138,57 +266,85 @@ function getGradeInfo(totalScore) {
   return { label: 'À améliorer ⚠️', cls: 'badge-improve' };
 }
 
-function loadTeamData(teamId) {
-  currentTeamId = parseInt(teamId);
-  const team = evaluations[currentTeamId];
-  if (!team) return;
+// ============================================================
+// CHARGEMENT DE LA FICHE D'ÉVALUATION
+// ============================================================
 
-  document.getElementById('currentTeamBadge').textContent = `Équipe ${String(currentTeamId).padStart(2, '0')} / ${TOTAL_TEAMS}`;
-  document.getElementById('currentTeamTitle').textContent = team.name;
-  document.getElementById('currentTeamMembers').innerHTML = `👥 <strong>Membres :</strong> ${team.members || 'Non renseigné'}`;
+function loadCandidateData() {
+  const candidate = getCurrentCandidate();
+  if (!candidate) return;
 
-  const isEval = isTeamEvaluated(team);
-  document.getElementById('currentTeamStatus').textContent = isEval ? 'Statut : Évaluée ✓' : 'Statut : Non évaluée';
-  document.getElementById('currentTeamStatus').style.color = isEval ? 'var(--teal)' : 'var(--text-muted)';
+  const badgeEl = document.getElementById('currentTeamBadge');
+  const titleEl = document.getElementById('currentTeamTitle');
+  const membersEl = document.getElementById('currentTeamMembers');
+  const statusEl = document.getElementById('currentTeamStatus');
 
+  if (currentCategory === 'teams') {
+    badgeEl.textContent = `Équipe ${String(currentTeamId).padStart(2, '0')} / ${TOTAL_TEAMS}`;
+    titleEl.textContent = candidate.name;
+    membersEl.innerHTML = `👥 <strong>Membres :</strong> ${candidate.members || 'Non renseigné'}`;
+  } else {
+    const idx = solosDirectory.findIndex(s => s.id === currentSoloId) + 1;
+    badgeEl.textContent = `Participant Solo ${String(idx || 1).padStart(2, '0')} / ${solosDirectory.length}`;
+    titleEl.innerHTML = `👤 ${candidate.name} <span class="solo-tag" style="vertical-align: middle; margin-left: 8px;">Compétition Solo</span>`;
+    const proj = candidate.project ? `🚀 <strong>Projet :</strong> ${candidate.project}` : '';
+    const git = candidate.github ? `&nbsp;·&nbsp; 🔗 <strong>GitHub :</strong> <a href="${candidate.github}" target="_blank" rel="noopener noreferrer" style="color: var(--teal);">${candidate.github}</a>` : '';
+    membersEl.innerHTML = proj + git || 'Participant Solo';
+  }
+
+  const isEval = isEvaluated(candidate);
+  statusEl.textContent = isEval ? 'Statut : Évalué(e) ✓' : 'Statut : Non évalué(e)';
+  statusEl.style.color = isEval ? 'var(--teal)' : 'var(--text-muted)';
+
+  // Mise à jour des 8 critères pas à pas
   for (const c of CRITERIA_KEYS) {
-    const val = (team.scores && team.scores[c.key]) || 0;
+    const val = (candidate.scores && candidate.scores[c.key]) || 0;
     const rangeEl = document.getElementById(`range_${c.key}`);
     const numEl = document.getElementById(`score_${c.key}`);
     if (rangeEl) rangeEl.value = val;
     if (numEl) numEl.value = val;
   }
 
-  document.getElementById('team_notes').value = team.notes || '';
+  document.getElementById('team_notes').value = candidate.notes || '';
 
   updateDisplays();
 }
 
+// Synchrone au déplacement du curseur / saisie numérique
 function syncScore(criterionKey, value) {
   const num = Math.max(0, parseFloat(value) || 0);
   const criterion = CRITERIA_KEYS.find(c => c.key === criterionKey);
   const clamped = Math.min(criterion.max, num);
 
-  document.getElementById(`range_${criterionKey}`).value = clamped;
-  document.getElementById(`score_${criterionKey}`).value = clamped;
+  const rangeEl = document.getElementById(`range_${criterionKey}`);
+  const scoreEl = document.getElementById(`score_${criterionKey}`);
+  if (rangeEl) rangeEl.value = clamped;
+  if (scoreEl) scoreEl.value = clamped;
 
-  if (!evaluations[currentTeamId].scores) {
-    evaluations[currentTeamId].scores = {};
+  const candidate = getCurrentCandidate();
+  if (!candidate) return;
+
+  if (!candidate.scores) {
+    candidate.scores = {};
   }
-  evaluations[currentTeamId].scores[criterionKey] = clamped;
+  candidate.scores[criterionKey] = clamped;
 
   saveToStorage();
   updateDisplays();
 }
 
 function saveCurrentTeamData() {
-  evaluations[currentTeamId].notes = document.getElementById('team_notes').value;
+  const candidate = getCurrentCandidate();
+  if (!candidate) return;
+  candidate.notes = document.getElementById('team_notes').value;
   saveToStorage();
 }
 
 function updateDisplays() {
-  const team = evaluations[currentTeamId];
-  const total = calculateTotal(team);
+  const candidate = getCurrentCandidate();
+  if (!candidate) return;
+
+  const total = calculateTotal(candidate);
   const grade = getGradeInfo(total);
 
   const totalDisplay = document.getElementById('totalScoreDisplay');
@@ -203,22 +359,28 @@ function updateDisplays() {
 
   let count = 0;
   for (const c of CRITERIA_KEYS) {
-    if ((team.scores[c.key] || 0) > 0) count++;
+    if ((candidate.scores && candidate.scores[c.key]) > 0) count++;
   }
   document.getElementById('evaluationProgressTxt').textContent = `Progression : ${count} / ${CRITERIA_KEYS.length} critères notés`;
 
-  populateTeamSelect();
+  populateCandidateSelect();
 }
 
-// Anti-rebond : évite d'écrire dans Firestore à chaque mouvement du slider
+// Sauvegarde persistante avec anti-rebond dans Firestore et localStorage
 async function saveToStorage() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
-      await saveTeam(currentTeamId, evaluations[currentTeamId]);
-      showToast("✓ Sauvegardé");
+      if (currentCategory === 'teams') {
+        localStorage.setItem('vora_teams', JSON.stringify(evaluations));
+        await saveTeam(currentTeamId, evaluations[currentTeamId]);
+      } else {
+        localStorage.setItem('vora_solos', JSON.stringify(soloEvaluations));
+        await saveSolo(currentSoloId, soloEvaluations[currentSoloId]);
+      }
+      showToast("✓ Sauvegardé avec succès");
     } catch (e) {
-      console.error("Erreur sauvegarde Firestore:", e);
+      console.error("Erreur sauvegarde:", e);
       showToast("❌ Erreur de sauvegarde");
     }
   }, 400);
@@ -226,6 +388,7 @@ async function saveToStorage() {
 
 function showToast(msg = "Notes sauvegardées automatiquement") {
   const toast = document.getElementById('toast');
+  if (!toast) return;
   toast.textContent = msg;
   toast.classList.add('show');
   clearTimeout(window.toastTimer);
@@ -234,48 +397,85 @@ function showToast(msg = "Notes sauvegardées automatiquement") {
   }, 1800);
 }
 
-function onTeamSelected(teamId) {
-  loadTeamData(teamId);
-}
-
-function nextTeam() {
-  if (currentTeamId < TOTAL_TEAMS) {
-    loadTeamData(currentTeamId + 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  } else {
-    showToast("Dernière équipe atteinte !");
-  }
-}
-
-function prevTeam() {
-  if (currentTeamId > 1) {
-    loadTeamData(currentTeamId - 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-}
-
-async function resetCurrentTeamScore() {
-  if (confirm(`Réinitialiser les notes de l'${evaluations[currentTeamId].name} ?`)) {
-    for (const c of CRITERIA_KEYS) {
-      evaluations[currentTeamId].scores[c.key] = 0;
+// Navigation précédent / suivant
+function nextCandidate() {
+  if (currentCategory === 'teams') {
+    if (currentTeamId < TOTAL_TEAMS) {
+      currentTeamId++;
+      loadCandidateData();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      showToast("Dernière équipe atteinte !");
     }
-    evaluations[currentTeamId].notes = "";
+  } else {
+    const idx = solosDirectory.findIndex(s => s.id === currentSoloId);
+    if (idx >= 0 && idx < solosDirectory.length - 1) {
+      currentSoloId = solosDirectory[idx + 1].id;
+      loadCandidateData();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      showToast("Dernier candidat solo atteint !");
+    }
+  }
+}
+
+function prevCandidate() {
+  if (currentCategory === 'teams') {
+    if (currentTeamId > 1) {
+      currentTeamId--;
+      loadCandidateData();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  } else {
+    const idx = solosDirectory.findIndex(s => s.id === currentSoloId);
+    if (idx > 0) {
+      currentSoloId = solosDirectory[idx - 1].id;
+      loadCandidateData();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+}
+
+async function resetCurrentCandidateScore() {
+  const candidate = getCurrentCandidate();
+  if (!candidate) return;
+
+  const typeLabel = currentCategory === 'teams' ? "l'équipe" : "le participant solo";
+  if (confirm(`Réinitialiser les notes de ${typeLabel} « ${candidate.name} » ?`)) {
+    for (const c of CRITERIA_KEYS) {
+      candidate.scores[c.key] = 0;
+    }
+    candidate.notes = "";
     clearTimeout(saveTimer);
-    await saveTeam(currentTeamId, evaluations[currentTeamId]);
-    loadTeamData(currentTeamId);
+
+    if (currentCategory === 'teams') {
+      localStorage.setItem('vora_teams', JSON.stringify(evaluations));
+      await saveTeam(currentTeamId, candidate);
+    } else {
+      localStorage.setItem('vora_solos', JSON.stringify(soloEvaluations));
+      await saveSolo(currentSoloId, candidate);
+    }
+
+    loadCandidateData();
     showToast("Notes réinitialisées.");
   }
 }
 
+// ============================================================
+// GESTIONNAIRE DES VUES / ONGLETS
+// ============================================================
+
 function switchView(viewName) {
   const views = {
     evaluate: document.getElementById('evaluateView'),
+    solo: document.getElementById('soloView'),
     leaderboard: document.getElementById('leaderboardView'),
     analytics: document.getElementById('analyticsView'),
     criteria: document.getElementById('criteriaView')
   };
   const tabs = {
     evaluate: document.getElementById('tabEvaluateBtn'),
+    solo: document.getElementById('tabSoloBtn'),
     leaderboard: document.getElementById('tabLeaderboardBtn'),
     analytics: document.getElementById('tabAnalyticsBtn'),
     criteria: document.getElementById('tabCriteriaBtn')
@@ -284,14 +484,17 @@ function switchView(viewName) {
 
   Object.values(views).forEach(v => { if (v) v.style.display = 'none'; });
   Object.values(tabs).forEach(t => { if (t) t.classList.remove('active'); });
-  teamBar.style.display = 'none';
+  if (teamBar) teamBar.style.display = 'none';
 
   if (views[viewName]) views[viewName].style.display = 'block';
   if (tabs[viewName]) tabs[viewName].classList.add('active');
 
   if (viewName === 'evaluate') {
-    teamBar.style.display = 'grid';
-    loadTeamData(currentTeamId);
+    if (teamBar) teamBar.style.display = 'grid';
+    loadCandidateData();
+  } else if (viewName === 'solo') {
+    renderSoloLeaderboard();
+    renderSoloKPIs();
   } else if (viewName === 'leaderboard') {
     renderLeaderboard();
   } else if (viewName === 'analytics') {
@@ -299,8 +502,238 @@ function switchView(viewName) {
   }
 }
 
+// ============================================================
+// TABLEAU RÉCAPITULATIF DES SOLOS (ADMIN)
+// ============================================================
+
+function renderSoloLeaderboard() {
+  const tbody = document.getElementById('soloRecapTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const soloList = Object.values(soloEvaluations).map(s => {
+    const total = calculateTotal(s);
+    return { ...s, total, grade: getGradeInfo(total) };
+  });
+
+  soloList.sort((a, b) => b.total - a.total);
+
+  if (soloList.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td colspan="14" style="text-align: center; padding: 30px; color: var(--text-muted); font-family: var(--font-mono);">
+        Aucun participant solo enregistré pour le moment. Cliquez sur « ➕ Ajouter un Participant Solo » ci-dessus.
+      </td>
+    `;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  soloList.forEach((solo, index) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family: var(--font-mono); font-weight: bold; color: ${index < 3 && solo.total > 0 ? 'var(--amber)' : 'var(--text-muted)'};">
+        ${index === 0 && solo.total > 0 ? '🥇 1' : index === 1 && solo.total > 0 ? '🥈 2' : index === 2 && solo.total > 0 ? '🥉 3' : '#' + (index + 1)}
+      </td>
+      <td class="team-cell" onclick="selectAndGoToSolo('${solo.id}')">
+        <strong>${solo.name}</strong>
+      </td>
+      <td class="members-cell" title="${solo.project || '-'}">
+        <span>${solo.project || '-'}</span>
+        ${solo.github ? `<br><a href="${solo.github}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--teal);">🔗 GitHub</a>` : ''}
+      </td>
+      <td>${solo.scores.innovation || 0}</td>
+      <td>${solo.scores.pertinence || 0}</td>
+      <td>${solo.scores.fonctionnalites || 0}</td>
+      <td>${solo.scores.technique || 0}</td>
+      <td>${solo.scores.uiux || 0}</td>
+      <td>${solo.scores.video || 0}</td>
+      <td>${solo.scores.impact || 0}</td>
+      <td>${solo.scores.github || 0}</td>
+      <td class="score-cell">${solo.total}</td>
+      <td><span class="grade-badge ${solo.grade.cls}" style="font-size: 11px; padding: 3px 8px;">${solo.grade.label}</span></td>
+      <td style="white-space: nowrap;">
+        <button class="btn-action btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="selectAndGoToSolo('${solo.id}')" title="Noter ce candidat">Noter ✎</button>
+        <button class="btn-action" style="padding: 4px 8px; font-size: 11px;" onclick="openAddSoloModal('${solo.id}')" title="Modifier les informations">✏️</button>
+        <button class="btn-action" style="padding: 4px 8px; font-size: 11px; color: #F87171;" onclick="deleteSoloCandidate('${solo.id}')" title="Supprimer">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSoloKPIs() {
+  const soloList = Object.values(soloEvaluations).map(s => {
+    const total = calculateTotal(s);
+    const isEval = isEvaluated(s);
+    return { ...s, total, isEval, grade: getGradeInfo(total) };
+  });
+
+  soloList.sort((a, b) => b.total - a.total);
+
+  const evalSolos = soloList.filter(s => s.isEval);
+  const evalCount = evalSolos.length;
+  const totalCount = soloList.length;
+  const sumScore = evalSolos.reduce((acc, s) => acc + s.total, 0);
+  const avgScore = evalCount > 0 ? (sumScore / evalCount) : 0;
+  const topSolo = soloList[0];
+  const passCount = evalSolos.filter(s => s.total >= 70).length;
+  const passRate = evalCount > 0 ? Math.round((passCount / evalCount) * 100) : 0;
+
+  const kpiAvg = document.getElementById('kpiSoloAvgScore');
+  const kpiAvgGrade = document.getElementById('kpiSoloAvgGrade');
+  const kpiTop = document.getElementById('kpiSoloTopScore');
+  const kpiTopName = document.getElementById('kpiSoloTopTeamName');
+  const kpiPassRate = document.getElementById('kpiSoloPassRate');
+  const kpiPassCount = document.getElementById('kpiSoloPassCount');
+  const kpiEval = document.getElementById('kpiSoloEvalCount');
+  const kpiEvalPercent = document.getElementById('kpiSoloEvalPercent');
+
+  if (kpiAvg) kpiAvg.innerHTML = `${avgScore.toFixed(1)} <small>/ 100</small>`;
+  if (kpiAvgGrade) kpiAvgGrade.textContent = `Mention : ${getGradeInfo(avgScore).label}`;
+  if (kpiTop) kpiTop.innerHTML = `${topSolo ? topSolo.total : 0} <small>/ 100</small>`;
+  if (kpiTopName) kpiTopName.textContent = topSolo && topSolo.total > 0 ? topSolo.name : 'En cours d\'évaluation';
+  if (kpiPassRate) kpiPassRate.innerHTML = `${passRate} <small>%</small>`;
+  if (kpiPassCount) kpiPassCount.textContent = `${passCount} candidat(s) avec note ≥ 70 pts`;
+  if (kpiEval) kpiEval.innerHTML = `${evalCount} <small>/ ${totalCount}</small>`;
+  if (kpiEvalPercent) kpiEvalPercent.textContent = totalCount > 0 ? `${Math.round((evalCount / totalCount) * 100)}% de complétion` : '0%';
+}
+
+function selectAndGoToSolo(soloId) {
+  setCategory('solos');
+  currentSoloId = soloId;
+  switchView('evaluate');
+  loadCandidateData();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// MODALE CANDIDAT SOLO (AJOUT / ÉDITION)
+// ============================================================
+
+function openAddSoloModal(editSoloId = null) {
+  const modal = document.getElementById('addSoloModal');
+  const title = document.getElementById('soloModalTitle');
+  const hiddenId = document.getElementById('modalSoloId');
+  const nameInp = document.getElementById('soloNameInput');
+  const projInp = document.getElementById('soloProjectInput');
+  const gitInp = document.getElementById('soloGithubInput');
+
+  if (!modal) return;
+
+  if (editSoloId && soloEvaluations[editSoloId]) {
+    const s = soloEvaluations[editSoloId];
+    title.textContent = "✏️ Modifier le Participant Solo";
+    hiddenId.value = s.id;
+    nameInp.value = s.name || "";
+    projInp.value = s.project || "";
+    gitInp.value = s.github || "";
+  } else {
+    title.textContent = "➕ Ajouter un Participant Solo";
+    hiddenId.value = "";
+    nameInp.value = "";
+    projInp.value = "";
+    gitInp.value = "";
+  }
+
+  modal.classList.add('show');
+  nameInp.focus();
+}
+
+function closeAddSoloModal() {
+  const modal = document.getElementById('addSoloModal');
+  if (modal) modal.classList.remove('show');
+}
+
+async function handleSaveSoloModal(event) {
+  event.preventDefault();
+
+  const hiddenId = document.getElementById('modalSoloId').value;
+  const name = document.getElementById('soloNameInput').value.trim();
+  const project = document.getElementById('soloProjectInput').value.trim();
+  const github = document.getElementById('soloGithubInput').value.trim();
+
+  if (!name || !project) {
+    alert("Veuillez renseigner le nom et le projet.");
+    return;
+  }
+
+  let soloId = hiddenId;
+  if (!soloId) {
+    soloId = `solo-${Date.now()}`;
+    soloEvaluations[soloId] = {
+      id: soloId,
+      name: name,
+      project: project,
+      github: github,
+      scores: {
+        innovation: 0, pertinence: 0, fonctionnalites: 0,
+        technique: 0, uiux: 0, video: 0, impact: 0, github: 0
+      },
+      notes: ""
+    };
+  } else {
+    soloEvaluations[soloId].name = name;
+    soloEvaluations[soloId].project = project;
+    soloEvaluations[soloId].github = github;
+  }
+
+  updateSolosDirectory();
+  currentSoloId = soloId;
+
+  // Persistance
+  try {
+    localStorage.setItem('vora_solos', JSON.stringify(soloEvaluations));
+    await saveSolo(soloId, soloEvaluations[soloId]);
+    showToast(`✓ Participant « ${name} » enregistré !`);
+  } catch (e) {
+    console.error(e);
+    showToast("✓ Enregistré en local");
+  }
+
+  closeAddSoloModal();
+  renderSoloLeaderboard();
+  renderSoloKPIs();
+  populateCandidateSelect();
+}
+
+async function deleteSoloCandidate(soloId) {
+  const candidate = soloEvaluations[soloId];
+  if (!candidate) return;
+
+  if (confirm(`Supprimer définitivement le candidat solo « ${candidate.name} » ?`)) {
+    delete soloEvaluations[soloId];
+    updateSolosDirectory();
+
+    try {
+      localStorage.setItem('vora_solos', JSON.stringify(soloEvaluations));
+      await deleteSolo(soloId);
+      showToast("Candidat solo supprimé.");
+    } catch (e) {
+      console.error(e);
+      showToast("Supprimé en local.");
+    }
+
+    if (currentSoloId === soloId) {
+      currentSoloId = solosDirectory.length > 0 ? solosDirectory[0].id : null;
+    }
+
+    renderSoloLeaderboard();
+    renderSoloKPIs();
+    populateCandidateSelect();
+    if (currentCategory === 'solos') {
+      loadCandidateData();
+    }
+  }
+}
+
+// ============================================================
+// TABLEAU RÉCAPITULATIF DES ÉQUIPES (LEADERBOARD)
+// ============================================================
+
 function renderLeaderboard() {
   const tbody = document.getElementById('recapTableBody');
+  if (!tbody) return;
   tbody.innerHTML = '';
 
   const teamList = Object.values(evaluations).map(t => {
@@ -336,10 +769,14 @@ function renderLeaderboard() {
   });
 }
 
+// ============================================================
+// BILAN & ANALYTICS PARTENAIRES
+// ============================================================
+
 function renderAnalytics() {
   const teamList = Object.values(evaluations).map(t => {
     const total = calculateTotal(t);
-    const isEval = isTeamEvaluated(t);
+    const isEval = isEvaluated(t);
     return { ...t, total, isEval, grade: getGradeInfo(total) };
   });
 
@@ -528,12 +965,15 @@ function renderAnalytics() {
 }
 
 function selectAndGoToTeam(teamId) {
+  setCategory('teams');
+  currentTeamId = teamId;
   switchView('evaluate');
-  loadTeamData(teamId);
+  loadCandidateData();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ============================================================
-// EXPORT JSON
+// EXPORT JSON COMPLET (ÉQUIPES & SOLOS)
 // ============================================================
 
 function exportDataJSON() {
@@ -543,23 +983,25 @@ function exportDataJSON() {
       exportedAt: new Date().toISOString(),
       exportedBy: exporterName,
       totalTeams: TOTAL_TEAMS,
-      version: "1.0"
+      totalSolos: Object.keys(soloEvaluations).length,
+      version: "2.0"
     },
-    teams: evaluations
+    teams: evaluations,
+    solos: soloEvaluations
   };
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
   const a = document.createElement('a');
   const timestamp = new Date().toISOString().slice(0, 10);
   a.setAttribute("href", dataStr);
-  a.setAttribute("download", `vora_evaluations_${timestamp}.json`);
+  a.setAttribute("download", `vora_evaluations_globales_${timestamp}.json`);
   document.body.appendChild(a);
   a.click();
   a.remove();
-  showToast("💾 Export JSON terminé !");
+  showToast("💾 Export JSON terminé (Équipes + Solos) !");
 }
 
 // ============================================================
-// IMPORT JSON (écrit dans Firestore)
+// IMPORT JSON
 // ============================================================
 
 function importDataJSON(event) {
@@ -571,20 +1013,22 @@ function importDataJSON(event) {
   reader.onload = async (e) => {
     try {
       const raw = JSON.parse(e.target.result);
-      const importedTeams = raw.teams ? raw.teams : raw;
+      const importedTeams = raw.teams ? raw.teams : (raw.id ? null : raw);
+      const importedSolos = raw.solos || {};
       const meta = raw._meta || null;
 
       if (!importedTeams || typeof importedTeams !== 'object') {
-        throw new Error("Format JSON invalide — aucune équipe trouvée.");
+        throw new Error("Format JSON invalide — données d'équipes manquantes.");
       }
 
-      const count = Object.keys(importedTeams).length;
-      if (!confirm(`Importer ${count} équipe(s) dans Firestore ?\n\nCela écrasera les données actuelles de la base.`)) {
+      const teamCount = Object.keys(importedTeams).length;
+      const soloCount = Object.keys(importedSolos).length;
+      if (!confirm(`Importer ${teamCount} équipe(s) et ${soloCount} candidat(s) solo dans Firestore ?\n\nCela fusionnera les données dans la base.`)) {
         event.target.value = '';
         return;
       }
 
-      // Fusionne avec le répertoire officiel (garantit la structure)
+      // Fusion avec le répertoire officiel
       TEAMS_DIRECTORY.forEach(t => {
         const imp = importedTeams[t.id];
         if (imp) {
@@ -612,13 +1056,18 @@ function importDataJSON(event) {
       const DOC_REF = doc(db, "hackathon", "evaluations");
       await setDoc(DOC_REF, {
         teams: importedTeams,
+        solos: importedSolos,
         lastUpdate: new Date().toISOString()
       }, { merge: true });
 
-      // Recharge les données locales
       evaluations = importedTeams;
-      populateTeamSelect();
-      loadTeamData(currentTeamId);
+      soloEvaluations = importedSolos;
+      localStorage.setItem('vora_teams', JSON.stringify(evaluations));
+      localStorage.setItem('vora_solos', JSON.stringify(soloEvaluations));
+      updateSolosDirectory();
+
+      populateCandidateSelect();
+      loadCandidateData();
       updateDisplays();
 
       // Bandeau de statut
@@ -628,13 +1077,16 @@ function importDataJSON(event) {
         const src = meta
           ? ` (de ${meta.exportedBy || '?'}, le ${new Date(meta.exportedAt).toLocaleString('fr-FR')})`
           : '';
-        bannerText.textContent = `✅ ${count} équipe(s) importée(s) dans Firestore${src}`;
+        bannerText.textContent = `✅ ${teamCount} équipe(s) et ${soloCount} solo(s) importés dans Firestore${src}`;
         banner.style.display = 'block';
       }
 
-      showToast(`✅ ${count} équipe(s) importée(s)`);
+      showToast(`✅ Importation terminée avec succès !`);
 
-      // Rafraîchit les vues éventuellement ouvertes
+      if (document.getElementById('soloView').style.display !== 'none') {
+        renderSoloLeaderboard();
+        renderSoloKPIs();
+      }
       if (document.getElementById('leaderboardView').style.display !== 'none') renderLeaderboard();
       if (document.getElementById('analyticsView').style.display !== 'none') renderAnalytics();
 
@@ -655,7 +1107,7 @@ function importDataJSON(event) {
 }
 
 // ============================================================
-// EXPORT CSV
+// EXPORT CSV (ÉQUIPES & SOLOS)
 // ============================================================
 
 function exportCSV() {
@@ -677,7 +1129,41 @@ function exportCSV() {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  showToast("Exportation CSV terminée !");
+  showToast("Exportation CSV équipes terminée !");
+}
+
+function exportSoloCSV() {
+  let csv = "ID;Candidat;Projet;GitHub;Innovation (/20);Pertinence (/15);Fonctionnalites (/15);Qualite Technique (/15);UI UX (/10);Video Pitch (/10);Impact Faisabilite (/10);GitHub (/5);Total (/100);Mention;Commentaires\n";
+
+  const soloList = Object.values(soloEvaluations).sort((a, b) => calculateTotal(b) - calculateTotal(a));
+
+  soloList.forEach(solo => {
+    const total = calculateTotal(solo);
+    const grade = getGradeInfo(total);
+    const safeName = (solo.name || '').replace(/"/g, '""');
+    const safeProject = (solo.project || '').replace(/"/g, '""');
+    const safeGit = (solo.github || '').replace(/"/g, '""');
+    const safeNotes = (solo.notes || '').replace(/"/g, '""').replace(/[\r\n]+/g, ' ');
+    csv += `${solo.id};"${safeName}";"${safeProject}";"${safeGit}";${solo.scores.innovation || 0};${solo.scores.pertinence || 0};${solo.scores.fonctionnalites || 0};${solo.scores.technique || 0};${solo.scores.uiux || 0};${solo.scores.video || 0};${solo.scores.impact || 0};${solo.scores.github || 0};${total};"${grade.label}";"${safeNotes}"\n`;
+  });
+
+  const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "classement_vora_hackathon_solos.csv");
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  showToast("Exportation CSV solos terminée !");
+}
+
+function exportCurrentCSV() {
+  if (currentCategory === 'teams') {
+    exportCSV();
+  } else {
+    exportSoloCSV();
+  }
 }
 
 // ============================================================
@@ -723,15 +1209,29 @@ window.handleLogout = async function() {
   }
 };
 
-// Exposer les fonctions utilisées dans le HTML (onclick="...")
+// ============================================================
+// EXPOSITION GLOBALE POUR LE HTML (ONCLICK / ONCHANGE)
+// ============================================================
 window.switchView = switchView;
-window.onTeamSelected = onTeamSelected;
-window.prevTeam = prevTeam;
-window.nextTeam = nextTeam;
+window.setCategory = setCategory;
+window.onCandidateSelected = onCandidateSelected;
+window.onTeamSelected = onCandidateSelected; // rétro-compatibilité
+window.prevCandidate = prevCandidate;
+window.nextCandidate = nextCandidate;
+window.prevTeam = prevCandidate; // rétro-compatibilité
+window.nextTeam = nextCandidate; // rétro-compatibilité
 window.syncScore = syncScore;
 window.saveCurrentTeamData = saveCurrentTeamData;
-window.resetCurrentTeamScore = resetCurrentTeamScore;
+window.resetCurrentCandidateScore = resetCurrentCandidateScore;
+window.resetCurrentTeamScore = resetCurrentCandidateScore; // rétro-compatibilité
 window.exportDataJSON = exportDataJSON;
 window.importDataJSON = importDataJSON;
 window.exportCSV = exportCSV;
+window.exportSoloCSV = exportSoloCSV;
+window.exportCurrentCSV = exportCurrentCSV;
 window.selectAndGoToTeam = selectAndGoToTeam;
+window.selectAndGoToSolo = selectAndGoToSolo;
+window.openAddSoloModal = openAddSoloModal;
+window.closeAddSoloModal = closeAddSoloModal;
+window.handleSaveSoloModal = handleSaveSoloModal;
+window.deleteSoloCandidate = deleteSoloCandidate;

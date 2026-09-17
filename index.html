@@ -16,7 +16,7 @@
 
   <!-- HEADER / HERO -->
   <header class="hero">
-    <div class="hero-eyebrow">Hackathon VTC · Résultats Officiels &amp; Bilan Partenaires</div>
+    <div class="hero-eyebrow">Hackathon VTC · Résultats Officiels</div>
     <h1>VORA</h1>
     <p class="hero-sub">
       <strong>Réinventer la mobilité urbaine au Cameroun.</strong><br>
@@ -24,15 +24,18 @@
     </p>
     <div class="hero-meta">
       <span>Édition <b>Hackathon 2026</b></span>
-      <span>Candidats <b>27 Équipes (135+ participants)</b></span>
+      <span>Candidats <b>27 Équipes &amp; Participants Solo</b></span>
       <span>Barème <b>100 Pts</b></span>
       <span>Lecture <b>Temps réel</b></span>
     </div>
 
-    <!-- Mode Switcher (sans la fiche d'évaluation) -->
+    <!-- Mode Switcher -->
     <div class="view-switcher">
       <button class="tab-btn active" id="tabLeaderboardBtn" onclick="switchView('leaderboard')">
         <span>📊</span> Tableau Récapitulatif (27 Équipes)
+      </button>
+      <button class="tab-btn" id="tabSoloBtn" onclick="switchView('solo')">
+        <span>👤</span> Participants Solo
       </button>
       <button class="tab-btn" id="tabAnalyticsBtn" onclick="switchView('analytics')">
         <span>📈</span> Bilan &amp; Analytics Partenaires
@@ -46,7 +49,13 @@
   <!-- SECTION 1: LEADERBOARD -->
   <section id="leaderboardView" style="padding: 30px 0 60px;">
     <div class="route-intro">
-      <span>Vue globale &amp; Classement des 27 équipes</span>
+      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <span>Vue globale &amp; Classement des 27 équipes</span>
+        <div class="category-toggle">
+          <button class="category-btn active" onclick="switchView('leaderboard')">👥 Équipes (27)</button>
+          <button class="category-btn" onclick="switchView('solo')">👤 Participants Solo</button>
+        </div>
+      </div>
       <button class="btn-action btn-primary" onclick="exportCSV()">📊 Télécharger le classement CSV</button>
     </div>
 
@@ -70,6 +79,56 @@
           </tr>
         </thead>
         <tbody id="recapTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION SOLO: LEADERBOARD PARTICIPANTS SOLO -->
+  <section id="soloView" style="display: none; padding: 30px 0 60px;">
+    <div class="brief" style="border-left-color: var(--teal); margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <span class="stop-label" style="color: var(--amber);">Hackathon VORA 2026 · Compétition Solo</span>
+          <h2 style="font-family: var(--font-display); font-size: 24px; color: #FFFFFF; margin-top: 4px;">Classement Officiel · Participants Solo</h2>
+          <p style="margin-top: 8px; font-size: 14.5px; color: #C7CCD8; line-height: 1.6;">
+            Candidats ayant choisi de concourir individuellement. Ils sont évalués avec <strong>les mêmes critères d'excellence et le même barème strict de 100 points</strong> que les équipes.
+          </p>
+        </div>
+        <button class="btn-action btn-primary" onclick="exportSoloCSV()">📊 Télécharger le classement Solo (CSV)</button>
+      </div>
+    </div>
+
+    <div class="route-intro">
+      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <span>Classement des participants solo</span>
+        <div class="category-toggle">
+          <button class="category-btn" onclick="switchView('leaderboard')">👥 Équipes (27)</button>
+          <button class="category-btn active" onclick="switchView('solo')">👤 Participants Solo</button>
+        </div>
+      </div>
+      <button class="btn-action" onclick="exportSoloCSV()">📑 Export CSV Solo</button>
+    </div>
+
+    <div class="table-container">
+      <table class="recap-table" id="soloTable">
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Candidat Solo</th>
+            <th>Projet / Démo</th>
+            <th>Innov. (/20)</th>
+            <th>Pertin. (/15)</th>
+            <th>Fonct. (/15)</th>
+            <th>Techn. (/15)</th>
+            <th>UI/UX (/10)</th>
+            <th>Vidéo (/10)</th>
+            <th>Impact (/10)</th>
+            <th>Git (/5)</th>
+            <th>Total (/100)</th>
+            <th>Mention</th>
+          </tr>
+        </thead>
+        <tbody id="soloTableBody"></tbody>
       </table>
     </div>
   </section>

@@ -1,7 +1,7 @@
 // js/db.js
 import { db, auth } from './config.js';
 import {
-  doc, getDoc, setDoc, onSnapshot
+  doc, getDoc, setDoc, onSnapshot, deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   signInWithEmailAndPassword,
@@ -13,13 +13,17 @@ import {
 const DOC_REF = doc(db, "hackathon", "evaluations");
 
 /**
- * Charge toutes les évaluations depuis Firestore.
+ * Charge toutes les évaluations (équipes et solos) depuis Firestore.
  * Retourne null si le document n'existe pas encore.
  */
 export async function loadAllEvaluations() {
   const snap = await getDoc(DOC_REF);
   if (!snap.exists()) return null;
-  return snap.data().teams || null;
+  const data = snap.data();
+  return {
+    teams: data.teams || {},
+    solos: data.solos || {}
+  };
 }
 
 /**
@@ -34,13 +38,38 @@ export async function saveTeam(teamId, teamData) {
 }
 
 /**
- * Écoute les changements en temps réel.
- * La vitrine se met à jour automatiquement.
+ * Sauvegarde UN candidat solo sans écraser les autres.
+ * Utilise merge:true + écriture partielle par soloId.
+ */
+export async function saveSolo(soloId, soloData) {
+  await setDoc(DOC_REF, {
+    solos: { [soloId]: soloData },
+    lastUpdate: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Supprime UN candidat solo de Firestore.
+ */
+export async function deleteSolo(soloId) {
+  await setDoc(DOC_REF, {
+    solos: { [soloId]: deleteField() },
+    lastUpdate: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Écoute les changements en temps réel (équipes et solos).
+ * La vitrine et l'admin se mettent à jour automatiquement.
  */
 export function subscribeToChanges(callback) {
   return onSnapshot(DOC_REF, (snap) => {
     if (snap.exists()) {
-      callback(snap.data().teams || {});
+      const data = snap.data();
+      callback({
+        teams: data.teams || {},
+        solos: data.solos || {}
+      });
     }
   });
 }

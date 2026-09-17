@@ -63,14 +63,17 @@
     </p>
     <div class="hero-meta">
       <span>Édition <b>Hackathon 2026</b></span>
-      <span>Candidats <b>27 Équipes (135+ participants)</b></span>
+      <span>Candidats <b>27 Équipes &amp; Participants Solo</b></span>
       <span>Barème <b>100 Pts</b></span>
       <span>Persistance <b>Firestore temps réel</b></span>
     </div>
 
     <div class="view-switcher">
       <button class="tab-btn active" id="tabEvaluateBtn" onclick="switchView('evaluate')">
-        <span>📝</span> Fiche d'Évaluation par Équipe
+        <span>📝</span> Fiche d'Évaluation
+      </button>
+      <button class="tab-btn" id="tabSoloBtn" onclick="switchView('solo')">
+        <span>👤</span> Participants Solo
       </button>
       <button class="tab-btn" id="tabLeaderboardBtn" onclick="switchView('leaderboard')">
         <span>📊</span> Tableau Récapitulatif (27 Équipes)
@@ -90,24 +93,31 @@
     <button onclick="document.getElementById('importStatusBanner').style.display='none'" title="Fermer">✕</button>
   </div>
 
-  <!-- TEAM SELECTOR BAR -->
+  <!-- TEAM / CANDIDATE SELECTOR BAR -->
   <section class="team-bar" id="teamBar">
-    <div class="team-select-group">
-      <label for="teamSelect">Sélectionner l'équipe à évaluer</label>
-      <select id="teamSelect" class="team-select" onchange="onTeamSelected(this.value)">
-      </select>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div class="category-toggle">
+        <button class="category-btn active" id="catBtnTeams" onclick="setCategory('teams')">👥 Équipes (27)</button>
+        <button class="category-btn" id="catBtnSolos" onclick="setCategory('solos')">👤 Candidats Solo</button>
+      </div>
+      <div class="team-select-group">
+        <label for="teamSelect" id="candidateSelectLabel">Sélectionner l'équipe à évaluer</label>
+        <select id="teamSelect" class="team-select" onchange="onCandidateSelected(this.value)">
+        </select>
+      </div>
     </div>
 
     <div style="display: flex; gap: 8px;">
-      <button class="team-nav-btn" onclick="prevTeam()" title="Équipe précédente">◀ Précédent</button>
-      <button class="team-nav-btn" onclick="nextTeam()" title="Équipe suivante">Suivant ▶</button>
+      <button class="team-nav-btn" onclick="prevCandidate()" title="Candidat précédent">◀ Précédent</button>
+      <button class="team-nav-btn" onclick="nextCandidate()" title="Candidat suivant">Suivant ▶</button>
     </div>
 
     <div class="team-actions">
+      <button class="btn-action btn-primary" id="barAddSoloBtn" style="display:none;" onclick="openAddSoloModal()" title="Ajouter un candidat solo">➕ Nouveau Solo</button>
       <button class="btn-action" onclick="exportDataJSON()" title="Exporter toutes les notes en JSON">💾 Exporter JSON</button>
       <button class="btn-action" onclick="document.getElementById('importFile').click()" title="Importer un fichier JSON partagé">📂 Importer JSON</button>
       <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importDataJSON(event)">
-      <button class="btn-action" onclick="exportCSV()" title="Exporter en format CSV Excel">📑 Export CSV</button>
+      <button class="btn-action" onclick="exportCurrentCSV()" title="Exporter en format CSV Excel">📑 Export CSV</button>
       <button class="btn-action" onclick="window.print()" title="Imprimer la fiche en cours">🖨️ Imprimer</button>
       <button class="btn-action" onclick="handleLogout()" title="Se déconnecter">🚪 Déconnexion</button>
     </div>
@@ -463,13 +473,84 @@
         </div>
 
         <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap;">
-          <button class="btn-action" onclick="resetCurrentTeamScore()">🔄 Réinitialiser cette équipe</button>
-          <button class="btn-action btn-primary" onclick="nextTeam()">Équipe Suivante ➔</button>
+          <button class="btn-action" id="resetCandidateBtn" onclick="resetCurrentCandidateScore()">🔄 Réinitialiser la note</button>
+          <button class="btn-action btn-primary" id="nextCandidateBtn" onclick="nextCandidate()">Candidat Suivant ➔</button>
         </div>
       </div>
     </div>
 
   </main>
+
+  <!-- SECTION SOLO: RECAP & GESTION CANDIDATS SOLO (ADMIN) -->
+  <section id="soloView" style="display: none; padding: 20px 0 60px;">
+    <div class="brief" style="border-left-color: var(--teal);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <span class="stop-label" style="color: var(--amber);">Hackathon VORA 2026 · Compétition Solo</span>
+          <h2 style="font-family: var(--font-display); font-size: 24px; color: #FFFFFF; margin-top: 4px;">Tableau &amp; Gestion des Participants Solo</h2>
+          <p style="margin-top: 6px; font-size: 14px; color: var(--text-muted); line-height: 1.5;">
+            Les participants concourant en solo bénéficient <strong>des mêmes droits, barème officiel sur 100 points et 8 critères d'évaluation</strong> que les équipes.
+          </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn-action btn-primary" onclick="openAddSoloModal()">➕ Ajouter un Participant Solo</button>
+          <button class="btn-action" onclick="exportSoloCSV()">📊 Exporter le classement Solo (CSV)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI SOLOS -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-title">Moyenne Générale Solos</span>
+        <div class="kpi-value" id="kpiSoloAvgScore">00.0 <small>/ 100</small></div>
+        <span class="kpi-sub" id="kpiSoloAvgGrade">Mention : En attente</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Major Solo (Top 1)</span>
+        <div class="kpi-value" id="kpiSoloTopScore">00 <small>/ 100</small></div>
+        <span class="kpi-sub" id="kpiSoloTopTeamName" style="color: var(--teal); font-weight: 500;">-</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Projets Qualifiés (≥ 70 pts)</span>
+        <div class="kpi-value" id="kpiSoloPassRate">0 <small>%</small></div>
+        <span class="kpi-sub" id="kpiSoloPassCount">0 candidat(s) au niveau</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Candidats Évalués</span>
+        <div class="kpi-value" id="kpiSoloEvalCount">0 <small>/ 0</small></div>
+        <span class="kpi-sub" id="kpiSoloEvalPercent">0% complété</span>
+      </div>
+    </div>
+
+    <div class="route-intro" style="margin-top: 28px;">
+      <span>Classement &amp; Évaluation des participants solo</span>
+    </div>
+
+    <div class="table-container">
+      <table class="recap-table" id="soloRecapTable">
+        <thead>
+          <tr>
+            <th>Rang</th>
+            <th>Candidat Solo</th>
+            <th>Projet / Démo</th>
+            <th>Innov. (/20)</th>
+            <th>Pertin. (/15)</th>
+            <th>Fonct. (/15)</th>
+            <th>Techn. (/15)</th>
+            <th>UI/UX (/10)</th>
+            <th>Vidéo (/10)</th>
+            <th>Impact (/10)</th>
+            <th>Git (/5)</th>
+            <th>Total (/100)</th>
+            <th>Mention</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="soloRecapTableBody"></tbody>
+      </table>
+    </div>
+  </section>
 
   <!-- SECTION 2: LEADERBOARD -->
   <section id="leaderboardView" style="display: none; padding: 20px 0 60px;">
@@ -680,6 +761,35 @@
 </div> <!-- fin #appRoot -->
 
 <div class="toast" id="toast">Données enregistrées avec succès !</div>
+
+<!-- MODALE D'AJOUT D'UN CANDIDAT SOLO -->
+<div class="modal-backdrop" id="addSoloModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="soloModalTitle">➕ Ajouter un Participant Solo</h3>
+      <button class="modal-close-btn" onclick="closeAddSoloModal()">✕</button>
+    </div>
+    <form id="addSoloForm" onsubmit="handleSaveSoloModal(event)">
+      <input type="hidden" id="modalSoloId" value="">
+      <div class="form-group">
+        <label for="soloNameInput">Nom complet du participant *</label>
+        <input type="text" id="soloNameInput" placeholder="Ex: Alexandre Mbarga" required>
+      </div>
+      <div class="form-group">
+        <label for="soloProjectInput">Nom du projet / Solution *</label>
+        <input type="text" id="soloProjectInput" placeholder="Ex: Vora Express Solo" required>
+      </div>
+      <div class="form-group">
+        <label for="soloGithubInput">Lien Dépôt GitHub / Démo</label>
+        <input type="text" id="soloGithubInput" placeholder="Ex: https://github.com/alex/vora">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action" onclick="closeAddSoloModal()">Annuler</button>
+        <button type="submit" class="btn-action btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script type="module" src="js/admin.js"></script>
 

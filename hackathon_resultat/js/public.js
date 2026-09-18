@@ -51,11 +51,108 @@ const CRITERIA_KEYS = [
   { key: 'github', max: 5, title: 'GitHub' }
 ];
 
+// Nombre de colonnes total du tableau (13 existantes + 1 nouvelle "Avis")
+const TABLE_COLSPAN = 14;
+
 let evaluations = {};
 let soloEvaluations = {};
 let chartCurve = null;
 let chartDonut = null;
 let chartRadar = null;
+
+// ============================================================
+// AVIS DU JURY — Helpers
+// ============================================================
+
+const NOTE_TRUNCATE_LENGTH = 100;
+
+/** Échappe le HTML pour prévenir toute injection via Firestore. */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Retourne la cellule avec l'icône 💬 (cliquable ou non). */
+function buildCommentCell(candidateId, note, type) {
+  const hasNote = note && String(note).trim().length > 0;
+  if (!hasNote) {
+    return `<td class="comment-cell"><span class="btn-comment empty" title="Aucun commentaire du jury">💬</span></td>`;
+  }
+  const rowId = `comment-${type}-${candidateId}`;
+  return `<td class="comment-cell">
+    <button class="btn-comment" onclick="toggleComment('${rowId}', this)" title="Voir l'avis du jury" aria-label="Voir l'avis du jury">💬</button>
+  </td>`;
+}
+
+/** Retourne la ligne dépliable contenant le commentaire. */
+function buildCommentRow(candidateId, note, type, colspan = TABLE_COLSPAN) {
+  const rowId = `comment-${type}-${candidateId}`;
+  const fullText = (note && String(note).trim()) || '';
+  const hasNote = fullText.length > 0;
+  const needsTruncate = hasNote && fullText.length > NOTE_TRUNCATE_LENGTH;
+
+  const shortText = needsTruncate
+    ? fullText.slice(0, NOTE_TRUNCATE_LENGTH).trimEnd() + '…'
+    : fullText;
+
+  let bodyHtml;
+  if (!hasNote) {
+    bodyHtml = `<em class="quote-empty">Aucun commentaire n'a encore été rédigé par le jury pour ce candidat.</em>`;
+  } else if (needsTruncate) {
+    bodyHtml = `
+      <span class="quote-short">${escapeHtml(shortText)}</span>
+      <span class="quote-full" style="display:none;">${escapeHtml(fullText)}</span>
+      <button class="btn-see-more" onclick="expandQuote(this)" data-short-label="Voir plus" data-full-label="Voir moins">Voir plus</button>
+    `;
+  } else {
+    bodyHtml = `<span class="quote-short">${escapeHtml(fullText)}</span>`;
+  }
+
+  return `
+    <tr class="comment-row hidden" id="${rowId}">
+      <td colspan="${colspan}">
+        <div class="jury-quote">
+          ${bodyHtml}
+          <span class="jury-author">Avis du jury</span>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+/** Ouvre / ferme la ligne de commentaire. */
+function toggleComment(rowId, btn) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+  const willOpen = row.classList.contains('hidden');
+  row.classList.toggle('hidden');
+  if (btn) btn.classList.toggle('open', willOpen);
+}
+
+/** Bascule tronqué ↔ complet. */
+function expandQuote(btn) {
+  const quote = btn.closest('.jury-quote');
+  if (!quote) return;
+  const short = quote.querySelector('.quote-short');
+  const full  = quote.querySelector('.quote-full');
+  if (!short || !full) return;
+
+  const isExpanded = full.style.display !== 'none';
+  if (isExpanded) {
+    full.style.display = 'none';
+    short.style.display = '';
+    btn.textContent = btn.dataset.shortLabel || 'Voir plus';
+  } else {
+    full.style.display = '';
+    short.style.display = 'none';
+    btn.textContent = btn.dataset.fullLabel || 'Voir moins';
+  }
+}
 
 // ============================================================
 // CALCULS
@@ -96,7 +193,8 @@ function mergeWithDirectory(remoteTeams) {
         scores: remote.scores || {
           innovation: 0, pertinence: 0, fonctionnalites: 0,
           technique: 0, uiux: 0, video: 0, impact: 0, github: 0
-        }
+        },
+        notes: remote.notes || ""
       };
     } else {
       merged[t.id] = {
@@ -197,8 +295,8 @@ function renderLeaderboard() {
       <td style="font-family: var(--font-mono); font-weight: bold; color: ${index < 3 ? 'var(--amber)' : 'var(--text-muted)'};">
         ${index === 0 ? '🥇 1' : index === 1 ? '🥈 2' : index === 2 ? '🥉 3' : '#' + (index + 1)}
       </td>
-      <td class="team-cell">${team.name}</td>
-      <td class="members-cell" title="${team.members}">${team.members || '-'}</td>
+      <td class="team-cell">${escapeHtml(team.name)}</td>
+      <td class="members-cell" title="${escapeHtml(team.members)}">${escapeHtml(team.members) || '-'}</td>
       <td>${team.scores.innovation || 0}</td>
       <td>${team.scores.pertinence || 0}</td>
       <td>${team.scores.fonctionnalites || 0}</td>
@@ -209,8 +307,14 @@ function renderLeaderboard() {
       <td>${team.scores.github || 0}</td>
       <td class="score-cell">${team.total}</td>
       <td><span class="grade-badge ${team.grade.cls}" style="font-size: 11px; padding: 3px 8px;">${team.grade.label}</span></td>
+      ${buildCommentCell(team.id, team.notes, 'team')}
     `;
     tbody.appendChild(tr);
+
+    // Ligne dépliable du commentaire
+    const temp = document.createElement('tbody');
+    temp.innerHTML = buildCommentRow(team.id, team.notes, 'team', TABLE_COLSPAN);
+    tbody.appendChild(temp.firstElementChild);
   });
 }
 
@@ -233,7 +337,7 @@ function renderSoloLeaderboard() {
   if (soloList.length === 0) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td colspan="13" style="text-align: center; padding: 30px; color: var(--text-muted); font-family: var(--font-mono);">
+      <td colspan="${TABLE_COLSPAN}" style="text-align: center; padding: 30px; color: var(--text-muted); font-family: var(--font-mono);">
         Aucun participant solo pour le moment.
       </td>
     `;
@@ -248,11 +352,11 @@ function renderSoloLeaderboard() {
         ${index === 0 && solo.total > 0 ? '🥇 1' : index === 1 && solo.total > 0 ? '🥈 2' : index === 2 && solo.total > 0 ? '🥉 3' : '#' + (index + 1)}
       </td>
       <td class="team-cell">
-        <strong>${solo.name}</strong> <span class="solo-tag" style="margin-left: 6px;">Solo</span>
+        <strong>${escapeHtml(solo.name)}</strong> <span class="solo-tag" style="margin-left: 6px;">Solo</span>
       </td>
-      <td class="members-cell" title="${solo.project || '-'}">
-        <span>${solo.project || '-'}</span>
-        ${solo.github ? `<br><a href="${solo.github}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--teal);">🔗 GitHub</a>` : ''}
+      <td class="members-cell" title="${escapeHtml(solo.project) || '-'}">
+        <span>${escapeHtml(solo.project) || '-'}</span>
+        ${solo.github ? `<br><a href="${escapeHtml(solo.github)}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: var(--teal);">🔗 GitHub</a>` : ''}
       </td>
       <td>${solo.scores.innovation || 0}</td>
       <td>${solo.scores.pertinence || 0}</td>
@@ -264,8 +368,13 @@ function renderSoloLeaderboard() {
       <td>${solo.scores.github || 0}</td>
       <td class="score-cell">${solo.total}</td>
       <td><span class="grade-badge ${solo.grade.cls}" style="font-size: 11px; padding: 3px 8px;">${solo.grade.label}</span></td>
+      ${buildCommentCell(solo.id, solo.notes, 'solo')}
     `;
     tbody.appendChild(tr);
+
+    const temp = document.createElement('tbody');
+    temp.innerHTML = buildCommentRow(solo.id, solo.notes, 'solo', TABLE_COLSPAN);
+    tbody.appendChild(temp.firstElementChild);
   });
 }
 
@@ -472,7 +581,7 @@ function renderAnalytics() {
 // ============================================================
 
 function exportCSV() {
-  let csv = "ID;Equipe;Membres;Innovation (/20);Pertinence (/15);Fonctionnalites (/15);Qualite Technique (/15);UI UX (/10);Video Pitch (/10);Impact Faisabilite (/10);GitHub (/5);Total (/100);Mention\n";
+  let csv = "ID;Equipe;Membres;Innovation (/20);Pertinence (/15);Fonctionnalites (/15);Qualite Technique (/15);UI UX (/10);Video Pitch (/10);Impact Faisabilite (/10);GitHub (/5);Total (/100);Mention;Avis du jury\n";
 
   const teamList = Object.values(evaluations).sort((a, b) => calculateTotal(b) - calculateTotal(a));
 
@@ -480,7 +589,8 @@ function exportCSV() {
     const total = calculateTotal(team);
     const grade = getGradeInfo(total);
     const safeMembers = (team.members || '').replace(/"/g, '""');
-    csv += `${team.id};"${team.name}";"${safeMembers}";${team.scores.innovation || 0};${team.scores.pertinence || 0};${team.scores.fonctionnalites || 0};${team.scores.technique || 0};${team.scores.uiux || 0};${team.scores.video || 0};${team.scores.impact || 0};${team.scores.github || 0};${total};"${grade.label}"\n`;
+    const safeNotes = (team.notes || '').replace(/"/g, '""').replace(/[\r\n]+/g, ' ');
+    csv += `${team.id};"${team.name}";"${safeMembers}";${team.scores.innovation || 0};${team.scores.pertinence || 0};${team.scores.fonctionnalites || 0};${team.scores.technique || 0};${team.scores.uiux || 0};${team.scores.video || 0};${team.scores.impact || 0};${team.scores.github || 0};${total};"${grade.label}";"${safeNotes}"\n`;
   });
 
   const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -494,7 +604,7 @@ function exportCSV() {
 }
 
 function exportSoloCSV() {
-  let csv = "ID;Candidat;Projet;GitHub;Innovation (/20);Pertinence (/15);Fonctionnalites (/15);Qualite Technique (/15);UI UX (/10);Video Pitch (/10);Impact Faisabilite (/10);GitHub (/5);Total (/100);Mention\n";
+  let csv = "ID;Candidat;Projet;GitHub;Innovation (/20);Pertinence (/15);Fonctionnalites (/15);Qualite Technique (/15);UI UX (/10);Video Pitch (/10);Impact Faisabilite (/10);GitHub (/5);Total (/100);Mention;Avis du jury\n";
 
   const soloList = Object.values(soloEvaluations).sort((a, b) => calculateTotal(b) - calculateTotal(a));
 
@@ -504,7 +614,8 @@ function exportSoloCSV() {
     const safeName = (solo.name || '').replace(/"/g, '""');
     const safeProject = (solo.project || '').replace(/"/g, '""');
     const safeGit = (solo.github || '').replace(/"/g, '""');
-    csv += `${solo.id};"${safeName}";"${safeProject}";"${safeGit}";${solo.scores.innovation || 0};${solo.scores.pertinence || 0};${solo.scores.fonctionnalites || 0};${solo.scores.technique || 0};${solo.scores.uiux || 0};${solo.scores.video || 0};${solo.scores.impact || 0};${solo.scores.github || 0};${total};"${grade.label}"\n`;
+    const safeNotes = (solo.notes || '').replace(/"/g, '""').replace(/[\r\n]+/g, ' ');
+    csv += `${solo.id};"${safeName}";"${safeProject}";"${safeGit}";${solo.scores.innovation || 0};${solo.scores.pertinence || 0};${solo.scores.fonctionnalites || 0};${solo.scores.technique || 0};${solo.scores.uiux || 0};${solo.scores.video || 0};${solo.scores.impact || 0};${solo.scores.github || 0};${total};"${grade.label}";"${safeNotes}"\n`;
   });
 
   const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -547,8 +658,12 @@ document.addEventListener('DOMContentLoaded', () => {
   evaluations = mergeWithDirectory(localTeams);
   soloEvaluations = mergeSolos(localSolos);
 
+  // Exposition globale pour les onclick HTML
   window.switchView = switchView;
   window.exportCSV = exportCSV;
   window.exportSoloCSV = exportSoloCSV;
+  window.toggleComment = toggleComment;
+  window.expandQuote = expandQuote;
+
   switchView('leaderboard');
 });

@@ -1195,3 +1195,257 @@ footer {
   padding-top: 16px;
   border-top: 1px solid var(--border);
 }
+
+/* ============================================================
+   AVIS DU JURY — Colonne + dépliage (AJOUT 2026)
+   ============================================================ */
+
+/* Cellule contenant l'icône 💬 */
+table.recap-table td.comment-cell {
+  text-align: center;
+  padding: 10px 8px;
+  width: 52px;
+}
+
+/* Bouton d'ouverture du commentaire */
+.btn-comment {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--teal);
+  font-size: 15px;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-body);
+}
+
+.btn-comment:hover {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.btn-comment.open {
+  background: var(--teal-soft);
+  border-color: var(--teal);
+  transform: rotate(180deg);
+}
+
+/* État « aucun commentaire » : discret, non cliquable */
+span.btn-comment.empty {
+  color: var(--text-muted);
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+span.btn-comment.empty:hover {
+  background: transparent;
+  border-color: var(--border-light);
+}
+
+/* Ligne dépliable */
+tr.comment-row.hidden {
+  display: none;
+}
+
+tr.comment-row td {
+  background: var(--surface-2) !important;
+  padding: 0 !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+/* Encadré citation du jury — largeur limitée pour éviter le scroll horizontal */
+.jury-quote {
+  position: sticky;
+  left: 0;
+  max-width: 680px;          /* 👈 Largeur maximale du bloc */
+  width: calc(100vw - 120px); /* 👈 S'adapte aux petits écrans */
+  background: var(--surface);
+  border-left: 3px solid var(--amber);
+  border-radius: 6px;
+  padding: 18px 22px 16px 30px;
+  margin: 14px 18px;
+  font-size: 14.5px;
+  color: #C7CCD8;
+  line-height: 1.65;
+  white-space: normal;
+  box-sizing: border-box;    /* 👈 Important : la padding compte dans la largeur */
+}
+
+.jury-quote::before {
+  content: '\201C';
+  font-family: var(--font-display);
+  font-size: 42px;
+  line-height: 1;
+  color: var(--amber);
+  opacity: 0.35;
+  position: absolute;
+  top: 4px;
+  left: 10px;
+}
+
+.jury-quote .quote-short,
+.jury-quote .quote-full {
+  display: block;
+  font-style: italic;
+}
+
+.jury-quote .quote-empty {
+  display: block;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13.5px;
+}
+
+/* Signature anonymisée */
+.jury-quote .jury-author {
+  display: block;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+/* Bouton « Voir plus / Voir moins » */
+.btn-see-more {
+  display: inline-block;
+  background: none;
+  border: none;
+  color: var(--teal);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 0 0;
+  margin-top: 6px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn-see-more:hover {
+  color: #5cf3d9;
+}
+
+/* Impression : toujours déplier */
+@media print {
+  tr.comment-row.hidden { display: table-row !important; }
+  .btn-comment, .btn-see-more { display: none !important; }
+  .jury-quote .quote-short { display: none !important; }
+  .jury-quote .quote-full  { display: block !important; }
+}
+
+
+/* ============================================================
+   APERÇU PUBLIC DU COMMENTAIRE (admin)
+   ============================================================ */
+
+/* En-tête de la zone commentaire : label + bouton aperçu */
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.notes-header label {
+  margin-bottom: 0;
+}
+
+/* Bouton « Voir l'aperçu » */
+.btn-preview {
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--surface-2);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.btn-preview:hover {
+  background: var(--teal-soft);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+/* Modale plus large pour l'aperçu */
+.modal-box.modal-wide {
+  max-width: 720px;
+}
+
+/* Contexte (nom de l'équipe) dans la modale */
+.preview-context {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.preview-context-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-top: 4px;
+}
+
+/* Texte d'aide */
+.preview-help {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 14px;
+  font-style: italic;
+}
+
+/* Corps de l'aperçu */
+.preview-body {
+  background: var(--bg);
+  border: 1px dashed var(--border-light);
+  border-radius: 10px;
+  padding: 4px 0;
+  margin-bottom: 16px;
+}
+
+/* Le jury-quote dans la modale admin : pas de sticky, pleine largeur */
+.preview-body .jury-quote {
+  position: relative;
+  left: auto;
+  width: auto;
+  max-width: 100%;
+  margin: 14px 14px;
+}
+
+/* Footer spécifique à l'aperçu */
+.preview-footer {
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Compteur de caractères */
+.preview-counter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* Note explicative dans l'aperçu (troncature) */
+.preview-note {
+  display: block;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--amber-soft);
+  border-left: 2px solid var(--amber);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--amber);
+  font-style: normal;
+}

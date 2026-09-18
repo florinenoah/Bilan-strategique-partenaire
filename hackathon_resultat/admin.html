@@ -460,7 +460,12 @@
         </div>
 
         <div class="notes-box">
-          <label for="team_notes">Observations générales, points forts et axes d'amélioration</label>
+          <div class="notes-header">
+            <label for="team_notes">Observations générales, points forts et axes d'amélioration</label>
+            <button type="button" class="btn-action btn-preview" onclick="openCommentPreview()" title="Voir l'aperçu public de votre commentaire">
+              👁️ Voir l'aperçu
+            </button>
+          </div>
           <textarea id="team_notes" placeholder="Indiquez ici vos commentaires détaillés pour cette équipe..." oninput="saveCurrentTeamData()"></textarea>
         </div>
 
@@ -788,6 +793,37 @@
         <button type="submit" class="btn-action btn-primary">Enregistrer</button>
       </div>
     </form>
+  </div>
+</div>
+
+
+<!-- MODALE APERÇU PUBLIC DU COMMENTAIRE -->
+<div class="modal-backdrop" id="commentPreviewModal">
+  <div class="modal-box modal-wide">
+    <div class="modal-header">
+      <h3>👁️ Aperçu public du commentaire</h3>
+      <button class="modal-close-btn" onclick="closeCommentPreview()">✕</button>
+    </div>
+
+    <div class="preview-context">
+      <span class="stop-label" id="previewContextLabel">Équipe 01 / 27</span>
+      <div class="preview-context-name" id="previewContextName">-</div>
+    </div>
+
+    <!-- <p class="preview-help">
+      Voici comment votre commentaire apparaîtra aux visiteurs, partenaires et participants sur la page publique des résultats.
+    </p> -->
+
+    <div class="preview-body">
+      <div class="jury-quote" id="previewQuoteBox">
+        <!-- Rempli dynamiquement par JS -->
+      </div>
+    </div>
+
+    <div class="modal-footer preview-footer">
+      <span class="preview-counter" id="previewCounter">0 caractère</span>
+      <button type="button" class="btn-action btn-primary" onclick="closeCommentPreview()">Fermer</button>
+    </div>
   </div>
 </div>
 

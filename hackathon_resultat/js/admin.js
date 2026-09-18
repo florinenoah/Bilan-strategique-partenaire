@@ -67,6 +67,117 @@ let chartDonut = null;
 let chartRadar = null;
 let saveTimer = null;
 
+
+
+// ============================================================
+// APERÇU PUBLIC DU COMMENTAIRE
+// ============================================================
+
+const NOTE_TRUNCATE_LENGTH = 180;
+
+/** Échappe le HTML pour prévenir toute injection. */
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Ouvre la modale d'aperçu public du commentaire. */
+function openCommentPreview() {
+  const candidate = getCurrentCandidate();
+  if (!candidate) return;
+
+  const modal = document.getElementById('commentPreviewModal');
+  if (!modal) return;
+
+  // Contexte (nom + numéro)
+  const contextLabel = document.getElementById('previewContextLabel');
+  const contextName = document.getElementById('previewContextName');
+
+  if (currentCategory === 'teams') {
+    contextLabel.textContent = `Équipe ${String(currentTeamId).padStart(2, '0')} / ${TOTAL_TEAMS}`;
+  } else {
+    const idx = solosDirectory.findIndex(s => s.id === currentSoloId) + 1;
+    contextLabel.textContent = `Participant Solo ${String(idx || 1).padStart(2, '0')} / ${solosDirectory.length}`;
+  }
+  contextName.textContent = candidate.name || '-';
+
+  renderCommentPreview();
+  modal.classList.add('show');
+}
+function renderCommentPreview() {
+  const candidate = getCurrentCandidate();
+  if (!candidate) return;
+
+  const quoteBox = document.getElementById('previewQuoteBox');
+  const counter = document.getElementById('previewCounter');
+  if (!quoteBox) return;
+
+  // Toujours relire la valeur actuelle du textarea (même si non sauvegardé)
+  const textarea = document.getElementById('team_notes');
+  const fullText = textarea ? textarea.value.trim() : (candidate.notes || '').trim();
+  const hasNote = fullText.length > 0;
+  const needsTruncate = hasNote && fullText.length > NOTE_TRUNCATE_LENGTH;
+
+  if (counter) {
+    counter.textContent = `${fullText.length} caractère${fullText.length > 1 ? 's' : ''}` +
+      (needsTruncate ? ` · tronqué à ${NOTE_TRUNCATE_LENGTH}` : '');
+  }
+
+  if (!hasNote) {
+    quoteBox.innerHTML = `
+      <em class="quote-empty">Aucun commentaire n'a encore été rédigé par le jury pour ce candidat.</em>
+      <span class="jury-author">Avis du jury</span>
+    `;
+    return;
+  }
+
+  if (needsTruncate) {
+    const shortText = fullText.slice(0, NOTE_TRUNCATE_LENGTH).trimEnd() + '…';
+    quoteBox.innerHTML = `
+      <span class="quote-short">${escapeHtml(shortText)}</span>
+      <span class="quote-full" style="display:none;">${escapeHtml(fullText)}</span>
+      <button class="btn-see-more" onclick="expandQuote(this)" data-short-label="Voir plus" data-full-label="Voir moins">Voir plus</button>
+     
+    `;
+  } else {
+    quoteBox.innerHTML = `
+      <span class="quote-short">${escapeHtml(fullText)}</span>
+      <span class="jury-author">Avis du jury</span>
+    `;
+  }
+}
+
+/** Ferme la modale d'aperçu. */
+function closeCommentPreview() {
+  const modal = document.getElementById('commentPreviewModal');
+  if (modal) modal.classList.remove('show');
+}
+
+/** Bascule tronqué ↔ complet dans l'aperçu. */
+function expandQuote(btn) {
+  const quote = btn.closest('.jury-quote');
+  if (!quote) return;
+  const short = quote.querySelector('.quote-short');
+  const full  = quote.querySelector('.quote-full');
+  if (!short || !full) return;
+
+  const isExpanded = full.style.display !== 'none';
+  if (isExpanded) {
+    full.style.display = 'none';
+    short.style.display = '';
+    btn.textContent = btn.dataset.shortLabel || 'Voir plus';
+  } else {
+    full.style.display = '';
+    short.style.display = 'none';
+    btn.textContent = btn.dataset.fullLabel || 'Voir moins';
+  }
+}
+
 // ============================================================
 // INITIALISATION
 // ============================================================
@@ -332,14 +443,18 @@ function syncScore(criterionKey, value) {
   saveToStorage();
   updateDisplays();
 }
-
 function saveCurrentTeamData() {
   const candidate = getCurrentCandidate();
   if (!candidate) return;
   candidate.notes = document.getElementById('team_notes').value;
   saveToStorage();
-}
 
+  // Mise à jour en direct de l'aperçu si la modale est ouverte
+  const modal = document.getElementById('commentPreviewModal');
+  if (modal && modal.classList.contains('show')) {
+    renderCommentPreview();
+  }
+}
 function updateDisplays() {
   const candidate = getCurrentCandidate();
   if (!candidate) return;
@@ -1235,3 +1350,9 @@ window.openAddSoloModal = openAddSoloModal;
 window.closeAddSoloModal = closeAddSoloModal;
 window.handleSaveSoloModal = handleSaveSoloModal;
 window.deleteSoloCandidate = deleteSoloCandidate;
+window.openCommentPreview = openCommentPreview;
+window.closeCommentPreview = closeCommentPreview;
+window.renderCommentPreview = renderCommentPreview;
+window.expandQuote = expandQuote;
+
+
